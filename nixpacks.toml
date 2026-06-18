@@ -1,0 +1,11 @@
+[build]
+# Explicitly set Python as the language
+nixpacks = ["python310"]
+
+[build.env]
+# Python environment variables
+PYTHONUNBUFFERED = "1"
+
+[start]
+# Start command for the backend
+cmd = "cd backend && gunicorn -w 4 -b 0.0.0.0:$PORT run:app"
