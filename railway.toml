@@ -1,8 +1,0 @@
-[build]
-builder = "nixpacks"
-
-[build.nixpacks]
-pkgs = ["python311", "libpq"]
-
-[start]
-cmd = "cd backend && gunicorn -w 4 -b 0.0.0.0:$PORT run:app"
