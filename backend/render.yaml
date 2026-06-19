@@ -5,10 +5,7 @@ services:
     region: oregon
     plan: free
     pythonVersion: "3.12"
-    buildCommand: |
-      pip install -r requirements.txt
-      python -c "from app.data.dataset_loader import generate_all_datasets; generate_all_datasets()"
-      python -c "from app.ml.trainer import train_all_models; train_all_models()"
+    buildCommand: pip install -r requirements.txt && python build.py
     startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 120 run:app
     healthCheckPath: /api/health
     envVars:
