@@ -1,3 +1,61 @@
+# ============================================
+# Medical Diagnosis with Machine Learning
+# ============================================
+
+# Virtual environments
+venv/
+.venv/
+env/
+*.egg-info/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# Database
+*.db
+*.sqlite3
+
+# ML model artifacts (too large for GitHub/Railway — trained at build time)
+*.pkl
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Distribution
+dist/
+build/
+
+# Test / coverage
+htmlcov/
+.coverage
+coverage.xml
+.pytest_cache/
+
+# Vercel temp files
+.vercel-tmp/*.log
+.vercel-tmp/*.pid
+
+# Node
+node_modules/
+
+# Logs
+*.log
 # Python
 __pycache__/
 *.py[cod]

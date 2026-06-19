@@ -29,8 +29,11 @@ class BaseConfig:
     DRIFT_THRESHOLD = 0.15
     ACCURACY_ALERT_THRESHOLD = 0.85
     
-    # CORS
-    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5173')
+    # CORS — comma-separated list; defaults allow local dev + Vercel preview
+    CORS_ORIGINS = os.environ.get(
+        'CORS_ORIGINS',
+        'http://localhost:5173,http://localhost:3000,https://frontend-green-gamma-jvjoxguk4a.vercel.app'
+    )
 
     # Rate Limiting
     RATE_LIMIT_WINDOW = 60  # seconds

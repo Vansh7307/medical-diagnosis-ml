@@ -1,4 +1,46 @@
 {
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacks": {
+      "providers": ["python"],
+      "pythonVersion": "3.12.8",
+      "phases": {
+        "build": {
+          "cmds": [
+            "python -c \"from app.data.dataset_loader import generate_all_datasets; generate_all_datasets()\"",
+            "python -c \"from app.ml.trainer import train_all_models; train_all_models()\""
+          ]
+        }
+      }
+    }
+  },
+  "deploy": {
+    "startCommand": "gunicorn -w 4 -b 0.0.0.0:$PORT run:app",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3,
+    "healthcheckPath": "/api/health",
+    "healthcheckTimeout": 120
+  }
+}
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS",
+    "nixpacks": {
+      "providers": ["python"],
+      "pythonVersion": "3.12.8"
+    }
+  },
+  "deploy": {
+    "startCommand": "python -c \"from app.data.dataset_loader import generate_all_datasets; generate_all_datasets()\" && python -c \"from app.ml.trainer import train_all_models; train_all_models()\" && gunicorn -w 4 -b 0.0.0.0:$PORT run:app",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3,
+    "healthcheckPath": "/api/health",
+    "healthcheckTimeout": 300
+  }
+}
+{
   "build": {
     "builder": "python:3.11"
   },
