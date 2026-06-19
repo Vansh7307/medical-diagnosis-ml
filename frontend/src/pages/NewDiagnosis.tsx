@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { diagnosisAPI } from '../services/api'
 import { RadialBarChart, RadialBar, ResponsiveContainer } from 'recharts'
 
@@ -107,11 +107,11 @@ export default function NewDiagnosis() {
   }
 
   // Initialize defaults on mount
-  useState(() => {
+  useEffect(() => {
     const defaults: Record<string, number> = {}
     FORM_FIELDS.heart.forEach(f => { defaults[f.name] = f.default })
     setFeatures(defaults)
-  })
+  }, [])
 
   const fields = FORM_FIELDS[selectedType]
   const riskScore = result ? (result.risk_score as number) : 0

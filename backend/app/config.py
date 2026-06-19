@@ -9,11 +9,12 @@ class BaseConfig:
     # Flask
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     
-    # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
+    # Database — fix Render's postgres:// → postgresql:// for SQLAlchemy 1.4+
+    _db_url = os.environ.get(
         'DATABASE_URL',
         f'sqlite:///{os.path.join(BASE_DIR, "instance", "medical_diagnosis.db")}'
     )
+    SQLALCHEMY_DATABASE_URI = _db_url.replace('postgres://', 'postgresql://', 1)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT
@@ -43,6 +44,7 @@ class BaseConfig:
         'diagnosis_diabetes': 30,
         'diagnosis_cancer': 30,
         'diagnosis_multi': 10,
+        'diagnosis_explain': 10,
         'auth_register': 5,
         'auth_login': 20,
     }

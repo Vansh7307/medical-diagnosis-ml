@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { patientsAPI } from '../services/api'
 
 interface Patient {
@@ -22,7 +22,7 @@ export default function Patients() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState({ first_name: '', last_name: '', gender: 'Male', email: '', phone: '', blood_type: '', date_of_birth: '' })
 
-  const loadPatients = () => {
+  const loadPatients = useCallback(() => {
     setLoading(true)
     patientsAPI.list(page, search)
       .then(res => {
@@ -31,9 +31,9 @@ export default function Patients() {
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }
+  }, [page, search])
 
-  useEffect(() => { loadPatients() }, [page, search])
+  useEffect(() => { loadPatients() }, [loadPatients])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()

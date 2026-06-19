@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
-import { diagnosisAPI, patientsAPI } from '../services/api'
+import { diagnosisAPI } from '../services/api'
 
 interface DiagnosisRecord {
   id: number
@@ -21,7 +21,7 @@ export default function DiagnosisHistory() {
   const [patientInfo, setPatientInfo] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const loadHistory = () => {
+  const loadHistory = useCallback(() => {
     if (!selectedPatientId) return
     setLoading(true)
     diagnosisAPI.history(parseInt(selectedPatientId))
@@ -31,9 +31,9 @@ export default function DiagnosisHistory() {
       })
       .catch(() => { setDiagnoses([]); setPatientInfo(null) })
       .finally(() => setLoading(false))
-  }
+  }, [selectedPatientId])
 
-  useEffect(() => { loadHistory() }, [selectedPatientId])
+  useEffect(() => { loadHistory() }, [loadHistory])
 
   return (
     <div className="p-8">

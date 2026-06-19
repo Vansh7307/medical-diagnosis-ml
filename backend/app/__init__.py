@@ -31,8 +31,8 @@ def create_app(config_name=None):
         RequestLogger(app)
 
     # Ensure directories exist
-    os.makedirs(app.config.get('ML_MODELS_DIR', 'ml/models'), exist_ok=True)
-    os.makedirs(os.path.join(app.config.get('BASE_DIR', '.'), 'instance'), exist_ok=True)
+    os.makedirs(app.config.get('ML_MODELS_DIR', os.path.join(os.path.dirname(__file__), 'ml', 'models')), exist_ok=True)
+    os.makedirs(os.path.join(app.config.get('BASE_DIR', os.path.dirname(__file__)), 'instance'), exist_ok=True)
 
     # Register blueprints
     from app.routes.auth import auth_bp

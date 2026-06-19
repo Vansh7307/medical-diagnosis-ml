@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { analyticsAPI } from '../services/api'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 
 export default function Analytics() {
   const [modelsData, setModelsData] = useState<Record<string, unknown> | null>(null)
