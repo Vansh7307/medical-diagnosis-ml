@@ -9,12 +9,11 @@ class BaseConfig:
     # Flask
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     
-    # Database — fix Render's postgres:// → postgresql:// for SQLAlchemy 1.4+
-    _db_url = os.environ.get(
+    # Database
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL',
         f'sqlite:///{os.path.join(BASE_DIR, "instance", "medical_diagnosis.db")}'
     )
-    SQLALCHEMY_DATABASE_URI = _db_url.replace('postgres://', 'postgresql://', 1)
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT
@@ -30,11 +29,8 @@ class BaseConfig:
     DRIFT_THRESHOLD = 0.15
     ACCURACY_ALERT_THRESHOLD = 0.85
     
-    # CORS — comma-separated list; defaults allow local dev + Vercel preview
-    CORS_ORIGINS = os.environ.get(
-        'CORS_ORIGINS',
-        'http://localhost:5173,http://localhost:3000,https://frontend-green-gamma-jvjoxguk4a.vercel.app'
-    )
+    # CORS
+    CORS_ORIGINS = os.environ.get('CORS_ORIGINS', 'http://localhost:5173')
 
     # Rate Limiting
     RATE_LIMIT_WINDOW = 60  # seconds
@@ -44,7 +40,6 @@ class BaseConfig:
         'diagnosis_diabetes': 30,
         'diagnosis_cancer': 30,
         'diagnosis_multi': 10,
-        'diagnosis_explain': 10,
         'auth_register': 5,
         'auth_login': 20,
     }
@@ -52,6 +47,17 @@ class BaseConfig:
     # API Docs
     API_VERSION = '1.0.0'
     API_TITLE = 'Medical Diagnosis ML API'
+
+    # Email / OTP verification
+    # Leave MAIL_USERNAME/MAIL_PASSWORD unset for local dev -- OTPs are logged
+    # to the console instead of emailed (see app/utils/email.py).
+    MAIL_SERVER = os.environ.get('MAIL_SERVER', '')
+    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
+    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
+    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
+    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', os.environ.get('MAIL_USERNAME', ''))
+    OTP_EXPIRY_MINUTES = 10
 
 
 class DevelopmentConfig(BaseConfig):

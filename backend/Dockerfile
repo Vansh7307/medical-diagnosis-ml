@@ -24,4 +24,4 @@ RUN mkdir -p app/instance
 EXPOSE 5000
 
 # Use gunicorn in production
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "run:app"]
+CMD ["python", "run.py"]

@@ -19,6 +19,7 @@ def create_app(config_name=None):
     config_class = config_map.get(config_name, config_map['production'])
     app.config.from_object(config_class())
 
+    # Ensure instance folder exists (for SQLite)
     os.makedirs(os.path.join(app.root_path, 'instance'), exist_ok=True)
 
     db.init_app(app)
@@ -28,15 +29,20 @@ def create_app(config_name=None):
     origins = [o.strip() for o in cors_origins.split(',') if o.strip()]
     CORS(app, origins=origins, supports_credentials=True)
 
+    from app.utils.email import init_mail
+    init_mail(app)
+
     from app.routes.auth import auth_bp
     from app.routes.patients import patients_bp
     from app.routes.diagnosis import diagnosis_bp
     from app.routes.analytics import analytics_bp
+    from app.routes.admin import admin_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(patients_bp, url_prefix='/api/patients')
     app.register_blueprint(diagnosis_bp, url_prefix='/api/diagnosis')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
 
     from app.routes.openapi import get_openapi_spec
 
@@ -48,7 +54,59 @@ def create_app(config_name=None):
     def health_check():
         return {'status': 'healthy', 'service': app.config.get('API_TITLE'), 'version': app.config.get('API_VERSION')}, 200
 
+    # Make sure every model is imported before create_all() so its table gets created.
+    from app.models.user import User
+    from app.models.patient import Patient
+    from app.models.diagnosis import Diagnosis
+    from app.models.login_history import LoginHistory
+
     with app.app_context():
         db.create_all()
 
+    _register_cli_commands(app)
+
     return app
+
+
+def _register_cli_commands(app):
+    import click
+
+    @app.cli.command('create-admin')
+    @click.option('--username', prompt=True)
+    @click.option('--email', prompt=True)
+    @click.option('--password', prompt=True, hide_input=True, confirmation_prompt=True)
+    def create_admin(username, email, password):
+        """One-time CLI command to create (or promote) the first admin account.
+
+        Usage:
+            flask create-admin
+        """
+        from app.models.user import User
+
+        with app.app_context():
+            user = User.query.filter(
+                db.or_(User.username == username, User.email == email)
+            ).first()
+
+            if user:
+                user.role = 'admin'
+                user.is_active = True
+                user.is_email_verified = True
+                if password:
+                    user.set_password(password)
+                db.session.commit()
+                click.echo(f'Existing user "{user.username}" promoted to admin.')
+                return
+
+            user = User(
+                username=username,
+                email=email,
+                full_name='Administrator',
+                role='admin',
+                is_active=True,
+                is_email_verified=True,  # skip OTP for the bootstrap admin
+            )
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            click.echo(f'Admin user "{username}" created successfully.')

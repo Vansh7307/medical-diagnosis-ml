@@ -11,9 +11,7 @@ from sklearn.datasets import load_breast_cancer as _sklearn_load_breast_cancer
 
 def get_datasets_dir():
     """Get the datasets directory path."""
-    datasets_dir = os.path.join(os.path.dirname(__file__), 'datasets')
-    os.makedirs(datasets_dir, exist_ok=True)
-    return datasets_dir
+    return os.path.join(os.path.dirname(__file__), 'datasets')
 
 
 def generate_heart_disease_dataset(n_samples=800, save=True):

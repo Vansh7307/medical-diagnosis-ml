@@ -34,31 +34,49 @@ def client(app, db):
     return app.test_client()
 
 
+def _solve_captcha(client):
+    """Fetch a CAPTCHA challenge and solve it (used to drive the auth endpoints in tests)."""
+    res = client.get('/api/auth/captcha')
+    data = res.get_json()
+    question = data['question']  # e.g. "7 + 3 = ?"
+    a, op, b, _eq, _q = question.split()
+    a, b = int(a), int(b)
+    answer = {'+': a + b, '-': a - b, '*': a * b}[op]
+    return data['captcha_token'], answer
+
+
 @pytest.fixture(scope='function')
 def auth_headers(client):
     """Create authenticated headers with a doctor user (for patient CRUD access)."""
     from app import db as _test_db
     from app.models.user import User
 
-    # Register
+    # Register (requires CAPTCHA)
+    token, answer = _solve_captcha(client)
     client.post('/api/auth/register', json={
         'username': 'testuser',
         'email': 'test@example.com',
         'password': 'testpass123',
-        'full_name': 'Test User'
+        'full_name': 'Test User',
+        'captcha_token': token,
+        'captcha_answer': answer,
     })
 
-    # Elevate role to doctor for testing patient CRUD access
+    # Elevate role to doctor and mark email verified (bypassing the OTP email step in tests)
     with client.application.app_context():
         user = User.query.filter_by(username='testuser').first()
         if user:
             user.role = 'doctor'
+            user.is_email_verified = True
             _test_db.session.commit()
 
-    # Login
+    # Login (requires CAPTCHA)
+    token, answer = _solve_captcha(client)
     res = client.post('/api/auth/login', json={
         'username': 'testuser',
-        'password': 'testpass123'
+        'password': 'testpass123',
+        'captcha_token': token,
+        'captcha_answer': answer,
     })
     token = res.get_json()['access_token']
     return {'Authorization': f'Bearer {token}'}

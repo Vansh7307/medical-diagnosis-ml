@@ -26,11 +26,45 @@ class UserRegistrationSchema(Schema):
         validate=validate.OneOf(['patient', 'doctor', 'admin']),
         load_default='patient'
     )
+    captcha_token = fields.String(required=True)
+    captcha_answer = fields.Raw(required=True)
 
 
 class UserLoginSchema(Schema):
     username = fields.String(required=True)
     password = fields.String(required=True)
+    captcha_token = fields.String(required=True)
+    captcha_answer = fields.Raw(required=True)
+
+
+class OTPVerifySchema(Schema):
+    username = fields.String(required=True)
+    otp_code = fields.String(
+        required=True,
+        validate=validate.Regexp(r'^\d{6}$', error='OTP must be a 6-digit code')
+    )
+
+
+class OTPResendSchema(Schema):
+    username = fields.String(required=True)
+
+
+class ForgotPasswordSchema(Schema):
+    email = fields.Email(required=True)
+    captcha_token = fields.String(required=True)
+    captcha_answer = fields.Raw(required=True)
+
+
+class ResetPasswordSchema(Schema):
+    email = fields.Email(required=True)
+    otp_code = fields.String(
+        required=True,
+        validate=validate.Regexp(r'^\d{6}$', error='OTP must be a 6-digit code')
+    )
+    new_password = fields.String(
+        required=True,
+        validate=validate.Length(min=6, max=128, error='Password must be 6-128 characters')
+    )
 
 
 class PatientCreateSchema(Schema):

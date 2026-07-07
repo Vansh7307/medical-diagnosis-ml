@@ -79,9 +79,13 @@ class TestPatientCRUD:
                 db.session.commit()
 
         # Re-login to get admin token
+        from tests.conftest import _solve_captcha
+        captcha_token, captcha_answer = _solve_captcha(client)
         res = client.post('/api/auth/login', json={
             'username': 'testuser',
-            'password': 'testpass123'
+            'password': 'testpass123',
+            'captcha_token': captcha_token,
+            'captcha_answer': captcha_answer,
         })
         admin_token = res.get_json()['access_token']
         admin_headers = {'Authorization': f'Bearer {admin_token}'}
