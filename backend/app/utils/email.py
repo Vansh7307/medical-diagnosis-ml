@@ -117,6 +117,9 @@ def send_password_reset_email(user, otp_code):
     except Exception as exc:  # pragma: no cover - depends on live SMTP
         logger.error('Failed to send password reset email to %s: %s', user.email, exc)
         return {'sent': False, 'reason': str(exc)}
+
+
+def send_otp_email(user, otp_code):
     """Send (or log, if unconfigured) the OTP verification email. Never raises."""
     subject = 'Your MedDiagnose AI verification code'
 
