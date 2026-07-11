@@ -30,6 +30,24 @@ ROLE_SCHEMA = RoleUpdateSchema()
 STATUS_SCHEMA = StatusUpdateSchema()
 
 
+@admin_bp.route('/bootstrap-admin', methods=['POST'])
+def bootstrap_admin():
+    """One-time endpoint to promote user to admin. Disabled once an admin exists."""
+    if User.query.filter_by(role='admin').first():
+        return jsonify({'error': 'An admin already exists. Use the admin portal to manage roles.'}), 403
+    data = request.get_json() or {}
+    secret = data.get('secret')
+    if secret != 'bootstrap-meddiagnose-2024':
+        return jsonify({'error': 'Invalid secret'}), 403
+    username = data.get('username')
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    user.role = 'admin'
+    db.session.commit()
+    return jsonify({'message': f'{username} is now admin'}), 200
+
+
 @admin_bp.route('/users', methods=['GET'])
 @role_required('admin')
 def list_users():
