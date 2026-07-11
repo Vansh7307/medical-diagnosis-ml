@@ -18,4 +18,4 @@ services:
       - key: CORS_ORIGINS
         value: "http://localhost:5173,http://localhost:3000,https://medical-diagnosis-ml-1.onrender.com,https://medical-diagnosis-ml.vercel.app"
       - key: RESEND_API_KEY
-        value: re_HW69cG3K_CrLVje9tp7yVw7wEUbpJhmfY
+        sync: false
