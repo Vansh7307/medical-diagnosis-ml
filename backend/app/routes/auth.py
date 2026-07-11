@@ -85,23 +85,20 @@ def register():
         email=email,
         full_name=full_name,
         role=role,
-        is_email_verified=True,
+        is_email_verified=False,
     )
     user.set_password(password)
-    user.record_login()
+    otp_code = user.generate_otp()
 
     db.session.add(user)
     db.session.commit()
 
-    access_token = create_access_token(
-        identity=str(user.id),
-        additional_claims={'username': user.username, 'role': user.role},
-    )
+    send_otp_email(user, otp_code)
 
     return jsonify({
-        'message': 'Registered successfully.',
-        'access_token': access_token,
-        'user': user.to_dict(),
+        'message': 'Registered successfully. Check your email for a 6-digit verification code.',
+        'username': user.username,
+        'otp_required': True,
     }), 201
 
 

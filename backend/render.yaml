@@ -17,3 +17,15 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: "http://localhost:5173,http://localhost:3000,https://medical-diagnosis-ml-1.onrender.com,https://medical-diagnosis-ml.vercel.app"
+      - key: MAIL_SERVER
+        value: smtp.gmail.com
+      - key: MAIL_PORT
+        value: "587"
+      - key: MAIL_USE_TLS
+        value: "true"
+      - key: MAIL_USERNAME
+        value: vanshaggarwaal11@gmail.com
+      - key: MAIL_PASSWORD
+        value: fhpmjzrztsmuuvwa
+      - key: MAIL_DEFAULT_SENDER
+        value: vanshaggarwaal11@gmail.com

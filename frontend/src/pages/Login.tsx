@@ -76,7 +76,7 @@ export default function Login() {
 
     try {
       if (mode === 'register') {
-        const res = await authAPI.register({
+        await authAPI.register({
           username: form.username,
           email: form.email,
           password: form.password,
@@ -84,7 +84,9 @@ export default function Login() {
           captcha_token: captchaToken,
           captcha_answer: form.captcha_answer,
         })
-        finishLogin(res.data.access_token, res.data.user)
+        setNotice(`We sent a 6-digit verification code to ${form.email}.`)
+        setMode('verify-otp')
+        setResendCooldown(30)
       } else {
         const res = await authAPI.login(form.username, form.password, captchaToken, form.captcha_answer)
         finishLogin(res.data.access_token, res.data.user)
