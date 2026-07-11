@@ -48,15 +48,9 @@ class BaseConfig:
     API_VERSION = '1.0.0'
     API_TITLE = 'Medical Diagnosis ML API'
 
-    # Email / OTP verification
-    # Leave MAIL_USERNAME/MAIL_PASSWORD unset for local dev -- OTPs are logged
-    # to the console instead of emailed (see app/utils/email.py).
-    MAIL_SERVER = os.environ.get('MAIL_SERVER', '')
-    MAIL_PORT = int(os.environ.get('MAIL_PORT', 587))
-    MAIL_USE_TLS = os.environ.get('MAIL_USE_TLS', 'true').lower() == 'true'
-    MAIL_USERNAME = os.environ.get('MAIL_USERNAME', '')
-    MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD', '')
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER', os.environ.get('MAIL_USERNAME', ''))
+    # Email / OTP verification via Resend (https://resend.com)
+    # Set RESEND_API_KEY environment variable - free tier: 3,000 emails/month
+    RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
     OTP_EXPIRY_MINUTES = 10
 
 
