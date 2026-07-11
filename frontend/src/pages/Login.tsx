@@ -429,7 +429,7 @@ export default function Login() {
               <span className="text-3xl leading-none">⚕️</span>
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight">MedDiagnose AI</h1>
-            <p className="text-blue-100/90 mt-1 text-sm">Medical Diagnosis with Machine Learning</p>
+            <p className="text-blue-100/90 mt-1 text-sm">AI-Powered Medical Diagnosis Platform</p>
           </div>
 
           <div className="p-8">
