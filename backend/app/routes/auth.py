@@ -85,27 +85,24 @@ def register():
         email=email,
         full_name=full_name,
         role=role,
-        is_email_verified=False,
+        is_email_verified=True,
     )
     user.set_password(password)
-    otp_code = user.generate_otp()
+    user.record_login()
 
     db.session.add(user)
     db.session.commit()
 
-    mail_result = send_otp_email(user, otp_code)
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={'username': user.username, 'role': user.role},
+    )
 
-    response = {
-        'message': 'Registered successfully. Check your email for a 6-digit verification code.',
-        'username': user.username,
-        'otp_required': True,
-    }
-    # Local/dev convenience: if mail isn't configured yet, surface the OTP so
-    # the flow can still be tested end-to-end (never done when mail IS configured).
-    if not mail_result.get('sent'):
-        response['dev_note'] = 'Email not configured yet -- OTP was logged on the server console.'
-
-    return jsonify(response), 201
+    return jsonify({
+        'message': 'Registered successfully.',
+        'access_token': access_token,
+        'user': user.to_dict(),
+    }), 201
 
 
 @auth_bp.route('/verify-otp', methods=['POST'])
