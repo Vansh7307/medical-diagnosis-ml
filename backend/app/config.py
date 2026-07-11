@@ -48,9 +48,9 @@ class BaseConfig:
     API_VERSION = '1.0.0'
     API_TITLE = 'Medical Diagnosis ML API'
 
-    # Email / OTP verification via Resend (https://resend.com)
-    # Set RESEND_API_KEY environment variable - free tier: 3,000 emails/month
-    RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+    # Email / OTP verification via Gmail SMTP
+    GMAIL_USER = os.environ.get('GMAIL_USER', '')
+    GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
     OTP_EXPIRY_MINUTES = 10
 
 
