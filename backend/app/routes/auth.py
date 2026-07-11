@@ -40,34 +40,6 @@ def _log_login_attempt(username, success, reason=None, user_id=None):
     db.session.commit()
 
 
-@auth_bp.route('/test-email', methods=['GET'])
-def test_email():
-    """Debug endpoint - tests Resend API connection."""
-    import os, urllib.request, urllib.error, json
-    api_key = os.environ.get('RESEND_API_KEY', '')
-    if not api_key:
-        return jsonify({'error': 'RESEND_API_KEY not set'}), 500
-    payload = json.dumps({
-        'from': 'MedDiagnose AI <onboarding@resend.dev>',
-        'to': ['vanshaggarwaal11@gmail.com'],
-        'subject': 'MedDiagnose AI - Email Test',
-        'html': '<p>Email is working correctly!</p>',
-    }).encode()
-    req = urllib.request.Request(
-        'https://api.resend.com/emails',
-        data=payload,
-        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
-        method='POST',
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return jsonify({'status': 'ok', 'message': 'Test email sent to vanshaggarwaal11@gmail.com'}), 200
-    except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        return jsonify({'error': body}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 @auth_bp.route('/captcha', methods=['GET'])
 def captcha():
     """Return a fresh CAPTCHA challenge for the login/register form."""
@@ -113,20 +85,23 @@ def register():
         email=email,
         full_name=full_name,
         role=role,
-        is_email_verified=False,
+        is_email_verified=True,
     )
     user.set_password(password)
-    otp_code = user.generate_otp()
+    user.record_login()
 
     db.session.add(user)
     db.session.commit()
 
-    send_otp_email(user, otp_code)
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={'username': user.username, 'role': user.role},
+    )
 
     return jsonify({
-        'message': 'Registered successfully. Check your email for a 6-digit verification code.',
-        'username': user.username,
-        'otp_required': True,
+        'message': 'Registered successfully.',
+        'access_token': access_token,
+        'user': user.to_dict(),
     }), 201
 
 
