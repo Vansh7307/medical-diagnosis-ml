@@ -26,6 +26,6 @@ services:
       - key: MAIL_USERNAME
         value: vanshaggarwaal11@gmail.com
       - key: MAIL_PASSWORD
-        value: fhpmjzrztsmuuvwa
+        sync: false
       - key: MAIL_DEFAULT_SENDER
         value: vanshaggarwaal11@gmail.com
