@@ -40,6 +40,24 @@ def _log_login_attempt(username, success, reason=None, user_id=None):
     db.session.commit()
 
 
+@auth_bp.route('/test-email', methods=['GET'])
+def test_email():
+    """Debug endpoint - tests email config. Remove after confirming email works."""
+    import os
+    import smtplib
+    gmail_user = os.environ.get('GMAIL_USER', '')
+    gmail_password = os.environ.get('GMAIL_APP_PASSWORD', '')
+    if not gmail_user or not gmail_password:
+        return jsonify({'error': 'GMAIL_USER or GMAIL_APP_PASSWORD not set', 'gmail_user': gmail_user}), 500
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587, timeout=10) as server:
+            server.starttls()
+            server.login(gmail_user, gmail_password)
+        return jsonify({'status': 'ok', 'message': f'Gmail SMTP login successful for {gmail_user}'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e), 'gmail_user': gmail_user}), 500
+
+
 @auth_bp.route('/captcha', methods=['GET'])
 def captcha():
     """Return a fresh CAPTCHA challenge for the login/register form."""

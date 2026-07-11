@@ -17,8 +17,6 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: "http://localhost:5173,http://localhost:3000,https://medical-diagnosis-ml-1.onrender.com,https://medical-diagnosis-ml.vercel.app"
-      - key: RESEND_API_KEY
-        sync: false
       - key: GMAIL_USER
         value: vanshaggarwaal11@gmail.com
       - key: GMAIL_APP_PASSWORD
