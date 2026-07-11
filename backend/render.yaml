@@ -16,4 +16,4 @@ services:
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        value: "http://localhost:5173,http://localhost:3000,https://frontend-green-gamma-jvjoxguk4a.vercel.app"
+        value: "http://localhost:5173,http://localhost:3000,https://medical-diagnosis-ml-1.onrender.com,https://medical-diagnosis-ml.vercel.app"
