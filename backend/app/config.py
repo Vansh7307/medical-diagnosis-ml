@@ -48,9 +48,8 @@ class BaseConfig:
     API_VERSION = '1.0.0'
     API_TITLE = 'Medical Diagnosis ML API'
 
-    # Email / OTP verification via Gmail SMTP
-    GMAIL_USER = os.environ.get('GMAIL_USER', '')
-    GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
+    # Email via Resend API (HTTPS - works on Render free tier)
+    RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
     OTP_EXPIRY_MINUTES = 10
 
 

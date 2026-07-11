@@ -42,21 +42,31 @@ def _log_login_attempt(username, success, reason=None, user_id=None):
 
 @auth_bp.route('/test-email', methods=['GET'])
 def test_email():
-    """Debug endpoint - tests email config. Remove after confirming email works."""
-    import os
-    import smtplib
-    gmail_user = os.environ.get('GMAIL_USER', '')
-    gmail_password = os.environ.get('GMAIL_APP_PASSWORD', '')
-    if not gmail_user or not gmail_password:
-        return jsonify({'error': 'GMAIL_USER or GMAIL_APP_PASSWORD not set', 'gmail_user': gmail_user}), 500
+    """Debug endpoint - tests Resend API connection."""
+    import os, urllib.request, urllib.error, json
+    api_key = os.environ.get('RESEND_API_KEY', '')
+    if not api_key:
+        return jsonify({'error': 'RESEND_API_KEY not set'}), 500
+    payload = json.dumps({
+        'from': 'MedDiagnose AI <onboarding@resend.dev>',
+        'to': ['vanshaggarwaal11@gmail.com'],
+        'subject': 'MedDiagnose AI - Email Test',
+        'html': '<p>Email is working correctly!</p>',
+    }).encode()
+    req = urllib.request.Request(
+        'https://api.resend.com/emails',
+        data=payload,
+        headers={'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'},
+        method='POST',
+    )
     try:
-        with smtplib.SMTP('smtp.gmail.com', 587, timeout=10) as server:
-            server.starttls()
-            server.login(gmail_user, gmail_password)
-        return jsonify({'status': 'ok', 'message': f'Gmail SMTP login successful for {gmail_user}'}), 200
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            return jsonify({'status': 'ok', 'message': 'Test email sent to vanshaggarwaal11@gmail.com'}), 200
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        return jsonify({'error': body}), 500
     except Exception as e:
-        return jsonify({'error': str(e), 'gmail_user': gmail_user}), 500
-
+        return jsonify({'error': str(e)}), 500
 
 @auth_bp.route('/captcha', methods=['GET'])
 def captcha():

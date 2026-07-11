@@ -1,15 +1,19 @@
 """
-Email sending via Gmail SMTP using smtplib (built into Python - no extra library).
-Set GMAIL_USER and GMAIL_APP_PASSWORD environment variables.
-Works with any recipient email address.
+Email via Resend API (HTTPS port 443 - works on Render free tier).
+SMTP port 587 is blocked by Render. Resend uses HTTP API instead.
+Free tier: 3,000 emails/month, sends to ANY email address.
+Requires: RESEND_API_KEY env var.
 """
 import logging
 import os
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import urllib.request
+import urllib.error
+import json
 
 logger = logging.getLogger('app.email')
+
+RESEND_API_URL = 'https://api.resend.com/emails'
+FROM_ADDRESS = 'MedDiagnose AI <onboarding@resend.dev>'
 
 
 def init_mail(app):
@@ -17,27 +21,39 @@ def init_mail(app):
 
 
 def _is_configured():
-    return bool(os.environ.get('GMAIL_USER') and os.environ.get('GMAIL_APP_PASSWORD'))
+    return bool(os.environ.get('RESEND_API_KEY'))
 
 
 def _send(to_email, subject, html):
-    gmail_user = os.environ.get('GMAIL_USER', '')
-    gmail_password = os.environ.get('GMAIL_APP_PASSWORD', '')
+    api_key = os.environ.get('RESEND_API_KEY', '')
+    payload = json.dumps({
+        'from': FROM_ADDRESS,
+        'to': [to_email],
+        'subject': subject,
+        'html': html,
+    }).encode('utf-8')
+    req = urllib.request.Request(
+        RESEND_API_URL,
+        data=payload,
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
     try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = f'MedDiagnose AI <{gmail_user}>'
-        msg['To'] = to_email
-        msg.attach(MIMEText(html, 'html'))
-
-        with smtplib.SMTP('smtp.gmail.com', 587) as server:
-            server.starttls()
-            server.login(gmail_user, gmail_password)
-            server.sendmail(gmail_user, to_email, msg.as_string())
-
-        return {'sent': True}
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status in (200, 201):
+                return {'sent': True}
+            body = resp.read().decode()
+            logger.error('Resend error %s: %s', resp.status, body)
+            return {'sent': False, 'reason': body}
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        logger.error('Resend HTTP error %s: %s', e.code, body)
+        return {'sent': False, 'reason': body}
     except Exception as exc:
-        logger.error('Failed to send email to %s: %s', to_email, exc)
+        logger.error('Resend request failed: %s', exc)
         return {'sent': False, 'reason': str(exc)}
 
 
@@ -87,13 +103,13 @@ def _reset_html(user, otp_code):
 
 def send_otp_email(user, otp_code):
     if not _is_configured():
-        logger.warning('GMAIL_USER/GMAIL_APP_PASSWORD not set -- OTP for %s: %s', user.email, otp_code)
+        logger.warning('RESEND_API_KEY not set -- OTP for %s: %s', user.email, otp_code)
         return {'sent': False, 'reason': 'not_configured'}
     return _send(user.email, 'Your MedDiagnose AI verification code', _otp_html(user, otp_code))
 
 
 def send_password_reset_email(user, otp_code):
     if not _is_configured():
-        logger.warning('GMAIL_USER/GMAIL_APP_PASSWORD not set -- reset OTP for %s: %s', user.email, otp_code)
+        logger.warning('RESEND_API_KEY not set -- reset OTP for %s: %s', user.email, otp_code)
         return {'sent': False, 'reason': 'not_configured'}
     return _send(user.email, 'Reset your MedDiagnose AI password', _reset_html(user, otp_code))
