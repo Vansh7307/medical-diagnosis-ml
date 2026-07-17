@@ -10,10 +10,15 @@ class BaseConfig:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
     
     # Database
-    SQLALCHEMY_DATABASE_URI = os.environ.get(
+    # Some providers (Neon, Supabase, Heroku-style) hand out URLs starting with
+    # "postgres://", but SQLAlchemy 2.x only accepts "postgresql://". Normalize it.
+    _raw_db_url = os.environ.get(
         'DATABASE_URL',
         f'sqlite:///{os.path.join(BASE_DIR, "instance", "medical_diagnosis.db")}'
     )
+    if _raw_db_url.startswith('postgres://'):
+        _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
+    SQLALCHEMY_DATABASE_URI = _raw_db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # JWT

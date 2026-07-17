@@ -32,6 +32,9 @@ shap>=0.45.0
 # Database Migrations
 alembic>=1.13.0
 
+# PostgreSQL driver (for persistent DB on Render free tier)
+psycopg2-binary>=2.9.9
+
 # Testing
 pytest>=8.0.0
 pytest-cov>=5.0.0
