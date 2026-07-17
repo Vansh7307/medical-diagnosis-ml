@@ -85,11 +85,11 @@ export const patientsAPI = {
 
 // Diagnosis
 export const diagnosisAPI = {
-  heart: (features: Record<string, number>, patientId?: number) =>
+  heart: (features: Record<string, number>, patientId?: string) =>
     api.post('/diagnosis/heart', { features, patient_id: patientId }),
-  diabetes: (features: Record<string, number>, patientId?: number) =>
+  diabetes: (features: Record<string, number>, patientId?: string) =>
     api.post('/diagnosis/diabetes', { features, patient_id: patientId }),
-  cancer: (features: Record<string, number>, patientId?: number) =>
+  cancer: (features: Record<string, number>, patientId?: string) =>
     api.post('/diagnosis/cancer', { features, patient_id: patientId }),
   multi: (data: Record<string, unknown>) =>
     api.post('/diagnosis/multi', data),

@@ -88,7 +88,7 @@ export default function NewDiagnosis() {
     setResult(null)
 
     try {
-      const pid = patientId ? parseInt(patientId) : undefined
+      const pid = patientId.trim() ? patientId.trim() : undefined
       let res
       if (selectedType === 'heart') {
         res = await diagnosisAPI.heart(features, pid)
@@ -141,12 +141,12 @@ export default function NewDiagnosis() {
             </div>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Patient ID (optional)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Patient Code (optional)</label>
               <input
-                type="number"
+                type="text"
                 value={patientId}
                 onChange={e => setPatientId(e.target.value)}
-                placeholder="Leave empty for anonymous prediction"
+                placeholder="e.g. PAT-AFD9477D — leave empty for anonymous prediction"
                 className="w-full md:w-64 px-3 py-2 border rounded-lg text-sm"
               />
             </div>

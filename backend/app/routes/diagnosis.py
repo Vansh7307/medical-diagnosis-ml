@@ -51,13 +51,17 @@ def _get_trainer(diagnosis_type):
 
 
 def _validate_patient(patient_id):
-    """Validate that a patient exists."""
-    if patient_id:
-        patient = Patient.query.get(patient_id)
-        if not patient:
-            return None
-        return patient
-    return None
+    """Look up a patient by either the internal numeric id or the
+    human-readable patient code (e.g. 'PAT-AFD9477D'), whichever was given."""
+    if not patient_id:
+        return None
+    patient_id = str(patient_id).strip()
+    if patient_id.isdigit():
+        patient = Patient.query.get(int(patient_id))
+        if patient:
+            return patient
+    # Fall back to (or primarily use) the human-readable patient code
+    return Patient.query.filter_by(patient_id=patient_id).first()
 
 
 def _validate_features(diagnosis_type, features):
@@ -136,8 +140,11 @@ def predict_heart():
         return jsonify({'error': 'Invalid features', 'details': e.messages}), 422
 
     patient_id = data.get('patient_id')
-    if patient_id and not _validate_patient(patient_id):
-        return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
+    if patient_id:
+        patient = _validate_patient(patient_id)
+        if not patient:
+            return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
+        patient_id = patient.id  # resolve code (e.g. PAT-AFD9477D) to internal numeric id
 
     try:
         result = _run_prediction('heart', data['features'], patient_id)
@@ -169,8 +176,11 @@ def predict_diabetes():
         return jsonify({'error': 'Invalid features', 'details': e.messages}), 422
 
     patient_id = data.get('patient_id')
-    if patient_id and not _validate_patient(patient_id):
-        return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
+    if patient_id:
+        patient = _validate_patient(patient_id)
+        if not patient:
+            return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
+        patient_id = patient.id  # resolve code (e.g. PAT-AFD9477D) to internal numeric id
 
     try:
         result = _run_prediction('diabetes', data['features'], patient_id)
@@ -202,8 +212,11 @@ def predict_cancer():
         return jsonify({'error': 'Invalid features', 'details': e.messages}), 422
 
     patient_id = data.get('patient_id')
-    if patient_id and not _validate_patient(patient_id):
-        return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
+    if patient_id:
+        patient = _validate_patient(patient_id)
+        if not patient:
+            return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
+        patient_id = patient.id  # resolve code (e.g. PAT-AFD9477D) to internal numeric id
 
     try:
         result = _run_prediction('cancer', data['features'], patient_id)
@@ -235,8 +248,11 @@ def predict_multi():
         return jsonify({'error': 'Validation failed', 'details': e.messages}), 422
 
     patient_id = data.get('patient_id')
-    if patient_id and not _validate_patient(patient_id):
-        return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
+    if patient_id:
+        patient = _validate_patient(patient_id)
+        if not patient:
+            return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
+        patient_id = patient.id  # resolve code (e.g. PAT-AFD9477D) to internal numeric id
 
     results = {}
     errors = {}
