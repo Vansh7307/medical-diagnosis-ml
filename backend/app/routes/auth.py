@@ -48,7 +48,9 @@ def captcha():
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """Register a new user. Requires CAPTCHA; account starts unverified until OTP is confirmed."""
+    """Register a new user. Requires CAPTCHA; sends OTP email for verification.
+    Account remains unverified until OTP is confirmed via /verify-otp.
+    """
     data = request.get_json()
 
     if not data:
@@ -80,28 +82,33 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already registered'}), 409
 
+    # FIX: Create user with is_email_verified=False (the default).
+    # The previous code incorrectly set is_email_verified=True here,
+    # bypassing the entire OTP flow and never sending any verification email.
     user = User(
         username=username,
         email=email,
         full_name=full_name,
         role=role,
-        is_email_verified=True,
+        # is_email_verified defaults to False in the model — do NOT set True here
     )
     user.set_password(password)
-    user.record_login()
+
+    # FIX: Generate OTP and send the verification email BEFORE committing.
+    otp_code = user.generate_otp()
 
     db.session.add(user)
     db.session.commit()
 
-    access_token = create_access_token(
-        identity=str(user.id),
-        additional_claims={'username': user.username, 'role': user.role},
-    )
+    # Send the OTP email (non-fatal: if email fails, user can use resend-otp)
+    send_otp_email(user, otp_code)
 
+    # FIX: Do NOT return an access_token here.
+    # The user is not yet verified; they must confirm their email via /verify-otp first.
     return jsonify({
-        'message': 'Registered successfully.',
-        'access_token': access_token,
-        'user': user.to_dict(),
+        'message': 'Registration successful. A verification code has been sent to your email.',
+        'email_verification_required': True,
+        'username': user.username,
     }), 201
 
 
@@ -220,6 +227,70 @@ def reset_password():
     db.session.commit()
 
     return jsonify({'message': 'Password reset successfully. You can now log in.'}), 200
+
+@auth_bp.route('/admin-login', methods=['POST'])
+def admin_login():
+    """Dedicated login for the admin portal. Identical credential/CAPTCHA checks
+    to the regular /login, but additionally rejects any account that isn't
+    role == 'admin' -- so non-admins get a clear, honest error instead of
+    landing in the wrong portal."""
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'No input data provided'}), 400
+
+    try:
+        validated = LOGIN_SCHEMA.load(data)
+    except MarshmallowValidationError as e:
+        return jsonify({'error': 'Validation failed', 'details': e.messages}), 422
+
+    ok, captcha_error = verify_captcha(validated['captcha_token'], validated['captcha_answer'])
+    if not ok:
+        return jsonify({'error': captcha_error}), 400
+
+    username = validated['username']
+    password = validated['password']
+
+    user = User.query.filter_by(username=username).first()
+
+    if not user or not user.check_password(password):
+        _log_login_attempt(username, success=False, reason='invalid_credentials',
+                            user_id=user.id if user else None)
+        return jsonify({'error': 'Invalid username or password'}), 401
+
+    if not user.is_active:
+        _log_login_attempt(username, success=False, reason='account_deactivated', user_id=user.id)
+        return jsonify({'error': 'Account is deactivated'}), 403
+
+    if not user.is_email_verified:
+        _log_login_attempt(username, success=False, reason='email_not_verified', user_id=user.id)
+        return jsonify({
+            'error': 'Email not verified. Please verify your email before logging in.',
+            'otp_required': True,
+            'username': user.username,
+        }), 403
+
+    if user.role != 'admin':
+        _log_login_attempt(username, success=False, reason='not_admin', user_id=user.id)
+        return jsonify({'error': 'This portal is for administrators only'}), 403
+
+    user.record_login()
+    db.session.commit()
+    _log_login_attempt(username, success=True, reason='admin_portal', user_id=user.id)
+
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={
+            'username': user.username,
+            'role': user.role,
+        }
+    )
+
+    return jsonify({
+        'access_token': access_token,
+        'user': user.to_dict()
+    }), 200
+
 
 @auth_bp.route('/login', methods=['POST'])
 def login():

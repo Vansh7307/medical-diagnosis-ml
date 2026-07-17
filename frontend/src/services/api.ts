@@ -24,7 +24,8 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      const onAdminPortal = window.location.pathname.startsWith('/admin');
+      window.location.href = onAdminPortal ? '/admin/login' : '/login';
     }
     return Promise.reject(error);
   }
@@ -40,6 +41,8 @@ export const authAPI = {
   getCaptcha: () => api.get<CaptchaChallenge>('/auth/captcha'),
   login: (username: string, password: string, captcha_token: string, captcha_answer: string) =>
     api.post('/auth/login', { username, password, captcha_token, captcha_answer }),
+  adminLogin: (username: string, password: string, captcha_token: string, captcha_answer: string) =>
+    api.post('/auth/admin-login', { username, password, captcha_token, captcha_answer }),
   register: (data: {
     username: string;
     email: string;
