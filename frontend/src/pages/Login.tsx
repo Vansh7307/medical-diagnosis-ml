@@ -84,7 +84,12 @@ export default function Login() {
           captcha_token: captchaToken,
           captcha_answer: form.captcha_answer,
         })
-        finishLogin(res.data.access_token, res.data.user)
+        // Registration no longer logs the user in directly -- the account
+        // stays unverified until the emailed OTP is confirmed. Route them
+        // to the verification screen instead of treating this as a login.
+        setForm((f) => ({ ...f, username: res.data.username || f.username }))
+        setNotice(res.data.message || 'Registered. Check your email for a verification code.')
+        setMode('verify-otp')
       } else {
         const res = await authAPI.login(form.username, form.password, captchaToken, form.captcha_answer)
         finishLogin(res.data.access_token, res.data.user)

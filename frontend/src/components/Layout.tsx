@@ -12,7 +12,14 @@ const navItems = [
 export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  let user: { role?: string } = {}
+  try {
+    user = JSON.parse(localStorage.getItem('user') || '{}')
+  } catch {
+    // Corrupted localStorage value -- clear it and fall back to a logged-out state
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('token')

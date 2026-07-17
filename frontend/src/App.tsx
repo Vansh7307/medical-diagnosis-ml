@@ -18,7 +18,14 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token')
   if (!token) return <Navigate to="/admin/login" />
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  let user: { role?: string } = {}
+  try {
+    user = JSON.parse(localStorage.getItem('user') || '{}')
+  } catch {
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+    return <Navigate to="/admin/login" />
+  }
   return user.role === 'admin' ? <>{children}</> : <Navigate to="/admin/login" />
 }
 
