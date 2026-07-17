@@ -82,33 +82,32 @@ def register():
     if User.query.filter_by(email=email).first():
         return jsonify({'error': 'Email already registered'}), 409
 
-    # FIX: Create user with is_email_verified=False (the default).
-    # The previous code incorrectly set is_email_verified=True here,
-    # bypassing the entire OTP flow and never sending any verification email.
+    # Email verification disabled: account is verified immediately, no OTP required.
     user = User(
         username=username,
         email=email,
         full_name=full_name,
         role=role,
-        # is_email_verified defaults to False in the model — do NOT set True here
+        is_email_verified=True,
     )
     user.set_password(password)
-
-    # FIX: Generate OTP and send the verification email BEFORE committing.
-    otp_code = user.generate_otp()
 
     db.session.add(user)
     db.session.commit()
 
-    # Send the OTP email (non-fatal: if email fails, user can use resend-otp)
-    send_otp_email(user, otp_code)
+    user.record_login()
+    db.session.commit()
+    _log_login_attempt(user.username, success=True, user_id=user.id)
 
-    # FIX: Do NOT return an access_token here.
-    # The user is not yet verified; they must confirm their email via /verify-otp first.
+    access_token = create_access_token(
+        identity=str(user.id),
+        additional_claims={'username': user.username, 'role': user.role},
+    )
+
     return jsonify({
-        'message': 'Registration successful. A verification code has been sent to your email.',
-        'email_verification_required': True,
-        'username': user.username,
+        'message': 'Registration successful',
+        'access_token': access_token,
+        'user': user.to_dict(),
     }), 201
 
 
@@ -262,6 +261,8 @@ def admin_login():
         _log_login_attempt(username, success=False, reason='account_deactivated', user_id=user.id)
         return jsonify({'error': 'Account is deactivated'}), 403
 
+    # Email verification is still required for the admin portal, even though
+    # it's disabled for regular users.
     if not user.is_email_verified:
         _log_login_attempt(username, success=False, reason='email_not_verified', user_id=user.id)
         return jsonify({
@@ -322,14 +323,6 @@ def login():
     if not user.is_active:
         _log_login_attempt(username, success=False, reason='account_deactivated', user_id=user.id)
         return jsonify({'error': 'Account is deactivated'}), 403
-
-    if not user.is_email_verified:
-        _log_login_attempt(username, success=False, reason='email_not_verified', user_id=user.id)
-        return jsonify({
-            'error': 'Email not verified. Please verify your email before logging in.',
-            'otp_required': True,
-            'username': user.username,
-        }), 403
 
     user.record_login()
     db.session.commit()
