@@ -38,6 +38,10 @@ def _send(to_email, subject, html):
         headers={
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
+            # Resend sits behind Cloudflare, which blocks the default
+            # "Python-urllib/x.y" User-Agent as a bot signature (HTTP 403,
+            # Cloudflare error code 1010). A normal-looking UA fixes it.
+            'User-Agent': 'MedDiagnoseAI-Backend/1.0 (+https://resend.com)',
         },
         method='POST',
     )
