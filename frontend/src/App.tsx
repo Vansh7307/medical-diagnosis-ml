@@ -9,6 +9,7 @@ import DiagnosisHistory from './pages/DiagnosisHistory'
 import Analytics from './pages/Analytics'
 import MLOpsMonitor from './pages/MLOpsMonitor'
 import AdminUsers from './pages/AdminUsers'
+import ColdStartBanner from './components/ColdStartBanner'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token')
@@ -31,18 +32,21 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-        <Route index element={<Dashboard />} />
-        <Route path="patients" element={<Patients />} />
-        <Route path="diagnosis/new" element={<NewDiagnosis />} />
-        <Route path="diagnosis/history/:patientId?" element={<DiagnosisHistory />} />
-        <Route path="analytics" element={<Analytics />} />
-        <Route path="mlops" element={<MLOpsMonitor />} />
-        <Route path="admin" element={<AdminRoute><AdminUsers /></AdminRoute>} />
-      </Route>
-    </Routes>
+    <>
+      <ColdStartBanner />
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/admin/login" element={<AdminLogin />} />
+        <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+          <Route index element={<Dashboard />} />
+          <Route path="patients" element={<Patients />} />
+          <Route path="diagnosis/new" element={<NewDiagnosis />} />
+          <Route path="diagnosis/history/:patientId?" element={<DiagnosisHistory />} />
+          <Route path="analytics" element={<Analytics />} />
+          <Route path="mlops" element={<MLOpsMonitor />} />
+          <Route path="admin" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+        </Route>
+      </Routes>
+    </>
   )
 }

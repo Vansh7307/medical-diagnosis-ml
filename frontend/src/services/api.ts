@@ -8,6 +8,40 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// --- Cold-start detection -------------------------------------------------
+// Render's free tier spins the backend down after ~15 min idle. The first
+// request after that can take 30-60s to wake it back up. Rather than let
+// the UI look frozen/broken, we fire a global event once any request has
+// been pending for a while, so a banner can tell the user what's happening.
+const SLOW_REQUEST_THRESHOLD_MS = 2500;
+let pendingSlowRequests = 0;
+
+api.interceptors.request.use((config) => {
+  const timerId = window.setTimeout(() => {
+    pendingSlowRequests += 1;
+    window.dispatchEvent(new CustomEvent('coldstart:show'));
+  }, SLOW_REQUEST_THRESHOLD_MS);
+  // Stash the timer on the config so the response interceptor can clear it
+  (config as typeof config & { _coldStartTimer?: number })._coldStartTimer = timerId;
+  return config;
+});
+
+function clearColdStartTimer(config: unknown) {
+  const timerId = (config as { _coldStartTimer?: number })?._coldStartTimer;
+  if (timerId === undefined) return;
+  window.clearTimeout(timerId);
+}
+
+function maybeHideBanner() {
+  if (pendingSlowRequests > 0) {
+    pendingSlowRequests -= 1;
+    if (pendingSlowRequests === 0) {
+      window.dispatchEvent(new CustomEvent('coldstart:hide'));
+    }
+  }
+}
+// ---------------------------------------------------------------------------
+
 // Add JWT token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
@@ -19,8 +53,14 @@ api.interceptors.request.use((config) => {
 
 // Handle 401 responses
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    clearColdStartTimer(response.config);
+    maybeHideBanner();
+    return response;
+  },
   (error) => {
+    clearColdStartTimer(error.config);
+    maybeHideBanner();
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
