@@ -136,7 +136,8 @@ def predict_heart():
         return jsonify({'error': 'Invalid features', 'details': e.messages}), 422
 
     patient_id = data.get('patient_id')
-    _validate_patient(patient_id)
+    if patient_id and not _validate_patient(patient_id):
+        return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
 
     try:
         result = _run_prediction('heart', data['features'], patient_id)
@@ -148,7 +149,7 @@ def predict_heart():
     except FileNotFoundError as e:
         return jsonify({'error': str(e)}), 404
     except Exception as e:
-        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
+        return jsonify({'error': 'Prediction failed. Please try again or contact support.'}), 500
 
 
 @diagnosis_bp.route('/diabetes', methods=['POST'])
@@ -168,7 +169,8 @@ def predict_diabetes():
         return jsonify({'error': 'Invalid features', 'details': e.messages}), 422
 
     patient_id = data.get('patient_id')
-    _validate_patient(patient_id)
+    if patient_id and not _validate_patient(patient_id):
+        return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
 
     try:
         result = _run_prediction('diabetes', data['features'], patient_id)
@@ -180,7 +182,7 @@ def predict_diabetes():
     except FileNotFoundError as e:
         return jsonify({'error': str(e)}), 404
     except Exception as e:
-        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
+        return jsonify({'error': 'Prediction failed. Please try again or contact support.'}), 500
 
 
 @diagnosis_bp.route('/cancer', methods=['POST'])
@@ -200,7 +202,8 @@ def predict_cancer():
         return jsonify({'error': 'Invalid features', 'details': e.messages}), 422
 
     patient_id = data.get('patient_id')
-    _validate_patient(patient_id)
+    if patient_id and not _validate_patient(patient_id):
+        return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
 
     try:
         result = _run_prediction('cancer', data['features'], patient_id)
@@ -212,7 +215,7 @@ def predict_cancer():
     except FileNotFoundError as e:
         return jsonify({'error': str(e)}), 404
     except Exception as e:
-        return jsonify({'error': f'Prediction failed: {str(e)}'}), 500
+        return jsonify({'error': 'Prediction failed. Please try again or contact support.'}), 500
 
 
 @diagnosis_bp.route('/multi', methods=['POST'])
@@ -232,7 +235,8 @@ def predict_multi():
         return jsonify({'error': 'Validation failed', 'details': e.messages}), 422
 
     patient_id = data.get('patient_id')
-    _validate_patient(patient_id)
+    if patient_id and not _validate_patient(patient_id):
+        return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
 
     results = {}
     errors = {}
