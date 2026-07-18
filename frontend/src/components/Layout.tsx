@@ -21,16 +21,16 @@ export default function Layout() {
   const navigate = useNavigate()
   let user: { role?: string } = {}
   try {
-    user = JSON.parse(localStorage.getItem('user') || '{}')
+    user = JSON.parse(sessionStorage.getItem('user') || '{}')
   } catch {
-    // Corrupted localStorage value -- clear it and fall back to a logged-out state
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    // Corrupted sessionStorage value -- clear it and fall back to a logged-out state
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     navigate('/login')
   }
 

@@ -44,7 +44,7 @@ function maybeHideBanner() {
 
 // Add JWT token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -62,8 +62,8 @@ api.interceptors.response.use(
     clearColdStartTimer(error.config);
     maybeHideBanner();
     if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      sessionStorage.removeItem('token');
+      sessionStorage.removeItem('user');
       const onAdminPortal = window.location.pathname.startsWith('/admin');
       window.location.href = onAdminPortal ? '/admin/login' : '/login';
     }

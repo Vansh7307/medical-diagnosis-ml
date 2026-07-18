@@ -26,7 +26,7 @@ export default function DiagnosisHistory() {
 
   let currentUser: { role?: string } = {}
   try {
-    currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+    currentUser = JSON.parse(sessionStorage.getItem('user') || '{}')
   } catch {
     // ignore corrupted value here -- Layout/App already guard against it globally
   }

@@ -13,19 +13,19 @@ import MyProfile from './pages/MyProfile'
 import ColdStartBanner from './components/ColdStartBanner'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
   return token ? <>{children}</> : <Navigate to="/login" />
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
   if (!token) return <Navigate to="/admin/login" />
   let user: { role?: string } = {}
   try {
-    user = JSON.parse(localStorage.getItem('user') || '{}')
+    user = JSON.parse(sessionStorage.getItem('user') || '{}')
   } catch {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     return <Navigate to="/admin/login" />
   }
   return user.role === 'admin' ? <>{children}</> : <Navigate to="/admin/login" />

@@ -41,8 +41,8 @@ export default function AdminLogin() {
 
     try {
       const res = await authAPI.adminLogin(username, password, captchaToken, captchaAnswer)
-      localStorage.setItem('token', res.data.access_token)
-      localStorage.setItem('user', JSON.stringify(res.data.user))
+      sessionStorage.setItem('token', res.data.access_token)
+      sessionStorage.setItem('user', JSON.stringify(res.data.user))
       navigate('/admin')
     } catch (err) {
       setError(getErrorMessage(err, 'Login failed'))

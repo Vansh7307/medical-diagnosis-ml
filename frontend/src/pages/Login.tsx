@@ -78,8 +78,8 @@ export default function Login() {
   }
 
   const finishLogin = (accessToken: string, user: unknown) => {
-    localStorage.setItem('token', accessToken)
-    localStorage.setItem('user', JSON.stringify(user))
+    sessionStorage.setItem('token', accessToken)
+    sessionStorage.setItem('user', JSON.stringify(user))
     navigate('/')
   }
 
