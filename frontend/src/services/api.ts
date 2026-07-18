@@ -100,7 +100,9 @@ export const authAPI = {
   resetPassword: (email: string, otp_code: string, new_password: string) =>
     api.post('/auth/reset-password', { email, otp_code, new_password }),
   getProfile: () => api.get('/auth/profile'),
+  updateProfile: (data: { full_name?: string; email?: string }) => api.put('/auth/profile', data),
 };
+
 
 // Admin
 export const adminAPI = {
@@ -118,6 +120,7 @@ export const patientsAPI = {
   list: (page = 1, search = '') =>
     api.get(`/patients?page=${page}&search=${search}`),
   get: (id: number) => api.get(`/patients/${id}`),
+  me: () => api.get('/patients/me'),
   create: (data: Record<string, unknown>) => api.post('/patients', data),
   update: (id: number, data: Record<string, unknown>) => api.put(`/patients/${id}`, data),
   delete: (id: number) => api.delete(`/patients/${id}`),
