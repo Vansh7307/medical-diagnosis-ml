@@ -50,7 +50,7 @@ def bootstrap_admin():
 
 
 @admin_bp.route('/link-patient', methods=['POST'])
-@role_required('admin')
+@role_required('admin', 'doctor', 'clinician')
 def link_patient():
     """Manually connect an existing login account to an existing patient
     record. Needed for accounts/records created before auto-linking existed
@@ -90,7 +90,7 @@ def link_patient():
 
 
 @admin_bp.route('/link-patient', methods=['DELETE'])
-@role_required('admin')
+@role_required('admin', 'doctor', 'clinician')
 def unlink_patient():
     """Remove the link between a patient record and a login account
     (e.g. it was linked to the wrong person by mistake)."""
