@@ -11,6 +11,8 @@ interface Patient {
   email: string
   phone: string
   blood_type: string
+  emergency_contact_name?: string
+  emergency_contact_phone?: string
   created_at: string
 }
 
@@ -23,6 +25,7 @@ export default function Patients() {
   const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [showLinkForm, setShowLinkForm] = useState(false)
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null)
   const [form, setForm] = useState({ first_name: '', last_name: '', gender: 'Male', email: '', phone: '', blood_type: '', date_of_birth: '' })
 
   const loadPatients = () => {
@@ -172,6 +175,7 @@ export default function Patients() {
                   <td className="py-3 px-4">{p.blood_type || '-'}</td>
                   <td className="py-3 px-4 text-slate-500">{new Date(p.created_at).toLocaleDateString()}</td>
                   <td className="py-3 px-4 space-x-3">
+                    <button onClick={() => setEditingPatient(p)} className="text-teal-600 hover:text-teal-800 text-xs">Edit</button>
                     <Link to={`/diagnosis/history/${p.id}`} className="text-blue-600 hover:text-blue-800 text-xs">History</Link>
                     <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800 text-xs">Delete</button>
                   </td>
@@ -190,6 +194,116 @@ export default function Patients() {
           <button onClick={() => setPage(page + 1)} disabled={patients.length < 20} className="px-3 py-1 border rounded text-sm disabled:opacity-50">Next</button>
         </div>
       )}
+
+      {editingPatient && (
+        <EditPatientModal
+          patient={editingPatient}
+          onClose={() => setEditingPatient(null)}
+          onSaved={() => { setEditingPatient(null); loadPatients() }}
+        />
+      )}
+    </div>
+  )
+}
+
+function EditPatientModal({ patient, onClose, onSaved }: { patient: Patient; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    first_name: patient.first_name || '',
+    last_name: patient.last_name || '',
+    gender: patient.gender || 'Male',
+    email: patient.email || '',
+    phone: patient.phone || '',
+    blood_type: patient.blood_type || '',
+    emergency_contact_name: patient.emergency_contact_name || '',
+    emergency_contact_phone: patient.emergency_contact_phone || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+    try {
+      await patientsAPI.update(patient.id, form)
+      onSaved()
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      setError(e.response?.data?.error || 'Failed to save changes.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900">Edit Patient</h3>
+            <p className="text-xs font-mono text-slate-500">{patient.patient_id}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">×</button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">{error}</div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">First Name</label>
+              <input required value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Last Name</label>
+              <input required value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>
+              <select value={form.gender} onChange={e => setForm({ ...form, gender: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm">
+                <option>Male</option><option>Female</option><option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Blood Type</label>
+              <input value={form.blood_type} onChange={e => setForm({ ...form, blood_type: e.target.value })} placeholder="e.g. O+" className="w-full px-3 py-2 border rounded-lg text-sm" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
+            <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Emergency Contact Name</label>
+              <input value={form.emergency_contact_name} onChange={e => setForm({ ...form, emergency_contact_name: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Emergency Contact Number</label>
+              <input value={form.emergency_contact_phone} onChange={e => setForm({ ...form, emergency_contact_phone: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-sm text-slate-600 hover:bg-slate-100">Cancel</button>
+            <button type="submit" disabled={saving} className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50">
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
