@@ -195,7 +195,6 @@ export default function Patients() {
 }
 
 function LinkPatientPanel() {
-  const [username, setUsername] = useState('')
   const [patientCode, setPatientCode] = useState('')
   const [status, setStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -205,9 +204,8 @@ function LinkPatientPanel() {
     setStatus(null)
     setBusy(true)
     try {
-      const res = await adminAPI.linkPatient(username.trim(), patientCode.trim())
+      const res = await adminAPI.linkPatient(patientCode.trim())
       setStatus({ type: 'success', text: res.data.message })
-      setUsername('')
       setPatientCode('')
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } }
@@ -221,22 +219,10 @@ function LinkPatientPanel() {
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
       <h3 className="font-semibold text-slate-900 mb-1">Link Patient Account</h3>
       <p className="text-sm text-slate-500 mb-3">
-        Connect an existing login account to an existing patient record, so that patient can see their own
-        profile and diagnosis history on their end. New registrations link automatically by matching email --
-        this is only needed for older accounts/records, or when the emails don't match.
+        Enter a patient's code to connect their login account automatically (matched by the email on file).
+        New registrations already link automatically -- this is only needed for older accounts/records.
       </p>
       <form onSubmit={handleLink} className="flex flex-wrap gap-3 items-end">
-        <div>
-          <label className="block text-xs font-medium text-slate-600 mb-1">Patient's Username</label>
-          <input
-            type="text"
-            required
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="e.g. jane_doe"
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm w-48"
-          />
-        </div>
         <div>
           <label className="block text-xs font-medium text-slate-600 mb-1">Patient Code</label>
           <input
@@ -245,7 +231,7 @@ function LinkPatientPanel() {
             value={patientCode}
             onChange={(e) => setPatientCode(e.target.value)}
             placeholder="e.g. PAT-AFD9477D"
-            className="px-3 py-2 border border-slate-300 rounded-lg text-sm w-48 font-mono"
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm w-56 font-mono"
           />
         </div>
         <button

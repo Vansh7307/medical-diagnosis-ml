@@ -52,39 +52,54 @@ def bootstrap_admin():
 @admin_bp.route('/link-patient', methods=['POST'])
 @role_required('admin', 'doctor', 'clinician')
 def link_patient():
-    """Manually connect an existing login account to an existing patient
-    record. Needed for accounts/records created before auto-linking existed
-    -- new registrations link automatically, but old ones don't retroactively.
+    """Connect an existing login account to an existing patient record.
 
-    Body: { "username": "...", "patient_code": "PAT-AFD9477D" }
+    Only needs the patient code -- we find the matching login automatically
+    by looking for a patient-role account whose email matches the one on
+    file for that patient. (New registrations already auto-link this way;
+    this endpoint exists for accounts/records that predate that, or where
+    the two didn't match up automatically for some reason.)
+
+    Body: { "patient_code": "PAT-AFD9477D" }
     """
     data = request.get_json() or {}
-    username = data.get('username', '').strip()
     patient_code = data.get('patient_code', '').strip()
 
-    if not username or not patient_code:
-        return jsonify({'error': 'username and patient_code are both required'}), 400
-
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        return jsonify({'error': f'No user found with username "{username}"'}), 404
+    if not patient_code:
+        return jsonify({'error': 'patient_code is required'}), 400
 
     patient = Patient.query.filter_by(patient_id=patient_code).first()
     if not patient:
         return jsonify({'error': f'No patient found with code "{patient_code}"'}), 404
 
-    if patient.user_id and patient.user_id != user.id:
-        return jsonify({'error': f'That patient record is already linked to a different account (user id {patient.user_id})'}), 409
+    if patient.user_id:
+        existing_user = User.query.get(patient.user_id)
+        return jsonify({
+            'error': f'That patient record is already linked to account "{existing_user.username if existing_user else patient.user_id}"'
+        }), 409
 
-    existing_link = Patient.query.filter_by(user_id=user.id).first()
-    if existing_link and existing_link.id != patient.id:
-        return jsonify({'error': f'That user is already linked to a different patient record ({existing_link.patient_id})'}), 409
+    if not patient.email:
+        return jsonify({'error': 'This patient record has no email on file, so a matching login account cannot be found automatically.'}), 400
 
-    patient.user_id = user.id
+    matching_user = User.query.filter(
+        db.func.lower(User.email) == patient.email.lower(),
+        User.role == 'patient',
+    ).first()
+
+    if not matching_user:
+        return jsonify({
+            'error': f'No login account found with email "{patient.email}". Ask the patient to register using that same email.'
+        }), 404
+
+    already_linked = Patient.query.filter_by(user_id=matching_user.id).first()
+    if already_linked and already_linked.id != patient.id:
+        return jsonify({'error': f'That account is already linked to a different patient record ({already_linked.patient_id})'}), 409
+
+    patient.user_id = matching_user.id
     db.session.commit()
 
     return jsonify({
-        'message': f'Linked {username} to patient {patient_code}',
+        'message': f'Linked patient {patient_code} to account "{matching_user.username}"',
         'patient': patient.to_dict(),
     }), 200
 
