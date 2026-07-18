@@ -342,6 +342,40 @@ def explain_prediction(diagnosis_type):
         return jsonify({'error': f'Explanation failed: {str(e)}'}), 500
 
 
+@diagnosis_bp.route('/my-history', methods=['GET'])
+@jwt_required()
+def my_diagnosis_history():
+    """Self-service: diagnosis history for whichever Patient record is
+    linked to the current login. No patient ID needed -- this is how a
+    patient user sees their own reports."""
+    user_id = int(get_jwt_identity())
+    patient = Patient.query.filter_by(user_id=user_id).first()
+
+    if not patient:
+        return jsonify({
+            'linked': False,
+            'message': 'No patient record is linked to your account yet.',
+        }), 404
+
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+
+    pagination = Diagnosis.query.filter_by(
+        patient_id=patient.id
+    ).order_by(Diagnosis.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    return jsonify({
+        'linked': True,
+        'patient': patient.to_dict(),
+        'diagnoses': [d.to_dict() for d in pagination.items],
+        'total': pagination.total,
+        'page': pagination.page,
+        'pages': pagination.pages,
+    }), 200
+
+
 @diagnosis_bp.route('/history/<int:patient_id>', methods=['GET'])
 @jwt_required()
 def diagnosis_history(patient_id):

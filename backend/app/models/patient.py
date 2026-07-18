@@ -8,6 +8,10 @@ class Patient(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     patient_id = db.Column(db.String(20), unique=True, nullable=False, index=True)
+    # Links this medical record to a login account (role='patient'), so that
+    # user can see their own data. Nullable: most patients won't have signed
+    # up for a login at all, and staff-created records start unlinked.
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, nullable=True, index=True)
     first_name = db.Column(db.String(80), nullable=False)
     last_name = db.Column(db.String(80), nullable=False)
     date_of_birth = db.Column(db.Date, nullable=True)
@@ -27,11 +31,13 @@ class Patient(db.Model):
     # Relationships
     diagnoses = db.relationship('Diagnosis', backref='patient', lazy='dynamic',
                                 cascade='all, delete-orphan')
+    user = db.relationship('User', backref=db.backref('patient_record', uselist=False))
 
     def to_dict(self):
         return {
             'id': self.id,
             'patient_id': self.patient_id,
+            'user_id': self.user_id,
             'first_name': self.first_name,
             'last_name': self.last_name,
             'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None,

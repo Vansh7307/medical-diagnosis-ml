@@ -23,6 +23,69 @@ interface PatientOption {
 
 export default function DiagnosisHistory() {
   const { patientId } = useParams()
+
+  let currentUser: { role?: string } = {}
+  try {
+    currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+  } catch {
+    // ignore corrupted value here -- Layout/App already guard against it globally
+  }
+
+  if (currentUser.role === 'patient') {
+    return <MyDiagnosisHistory />
+  }
+
+  return <StaffDiagnosisHistory initialPatientId={patientId} />
+}
+
+/** Patient-role view: no search needed, just show their own history. */
+function MyDiagnosisHistory() {
+  const [diagnoses, setDiagnoses] = useState<DiagnosisRecord[]>([])
+  const [patientInfo, setPatientInfo] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    diagnosisAPI.myHistory()
+      .then(res => {
+        setDiagnoses(res.data.diagnoses || [])
+        setPatientInfo(res.data.patient || null)
+      })
+      .catch((err) => {
+        setMessage(err.response?.data?.message || 'Unable to load your history right now.')
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  return (
+    <div className="p-8">
+      <h2 className="text-2xl font-bold text-slate-900 mb-6">My Diagnosis History</h2>
+
+      {patientInfo && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <h3 className="font-semibold text-blue-900">{String(patientInfo.first_name)} {String(patientInfo.last_name)}</h3>
+          <p className="text-sm text-blue-700">Patient Code: {String(patientInfo.patient_id)}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-center py-8 text-slate-500">Loading...</div>
+      ) : message ? (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-900 text-sm">{message}</div>
+      ) : diagnoses.length === 0 ? (
+        <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 text-sm">
+          No reports yet.
+        </div>
+      ) : (
+        <DiagnosisList diagnoses={diagnoses} />
+      )}
+    </div>
+  )
+}
+
+/** Staff view: existing name/ID search picker, unchanged behavior. */
+function StaffDiagnosisHistory({ initialPatientId }: { initialPatientId?: string }) {
+  const patientId = initialPatientId
   const [selectedPatientId, setSelectedPatientId] = useState(patientId || '')
   const [diagnoses, setDiagnoses] = useState<DiagnosisRecord[]>([])
   const [patientInfo, setPatientInfo] = useState<Record<string, unknown> | null>(null)
@@ -158,42 +221,48 @@ export default function DiagnosisHistory() {
           {selectedPatientId ? 'No diagnosis records found for this patient.' : 'Search for a patient above to view their diagnosis history.'}
         </div>
       ) : (
-        <div className="space-y-3">
-          {diagnoses.map(d => (
-            <div key={d.id} className="bg-white rounded-xl shadow-sm border p-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className={`w-3 h-3 rounded-full ${
-                  d.diagnosis_type === 'heart' ? 'bg-red-500' :
-                  d.diagnosis_type === 'diabetes' ? 'bg-amber-500' :
-                  d.diagnosis_type === 'cancer' ? 'bg-purple-500' : 'bg-blue-500'
-                }`} />
-                <div>
-                  <p className="font-medium text-slate-900 capitalize">{d.diagnosis_type} Diagnosis</p>
-                  <p className="text-sm text-slate-500">{d.prediction}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-6 text-sm">
-                <div className="text-center">
-                  <p className="font-semibold text-slate-900">{(d.confidence * 100).toFixed(1)}%</p>
-                  <p className="text-xs text-slate-500">Confidence</p>
-                </div>
-                <div className="text-center">
-                  <p className="font-semibold text-slate-900">{d.risk_score ? `${d.risk_score.toFixed(1)}%` : '-'}</p>
-                  <p className="text-xs text-slate-500">Risk</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-xs font-mono text-slate-600">{d.model_version}</p>
-                  <p className="text-xs text-slate-500">Version</p>
-                </div>
-                <div className="text-right text-slate-500 text-xs">
-                  {new Date(d.created_at).toLocaleDateString()}<br />
-                  {new Date(d.created_at).toLocaleTimeString()}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <DiagnosisList diagnoses={diagnoses} />
       )}
+    </div>
+  )
+}
+
+function DiagnosisList({ diagnoses }: { diagnoses: DiagnosisRecord[] }) {
+  return (
+    <div className="space-y-3">
+      {diagnoses.map(d => (
+        <div key={d.id} className="bg-white rounded-xl shadow-sm border p-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className={`w-3 h-3 rounded-full ${
+              d.diagnosis_type === 'heart' ? 'bg-red-500' :
+              d.diagnosis_type === 'diabetes' ? 'bg-amber-500' :
+              d.diagnosis_type === 'cancer' ? 'bg-purple-500' : 'bg-blue-500'
+            }`} />
+            <div>
+              <p className="font-medium text-slate-900 capitalize">{d.diagnosis_type} Diagnosis</p>
+              <p className="text-sm text-slate-500">{d.prediction}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-6 text-sm">
+            <div className="text-center">
+              <p className="font-semibold text-slate-900">{(d.confidence * 100).toFixed(1)}%</p>
+              <p className="text-xs text-slate-500">Confidence</p>
+            </div>
+            <div className="text-center">
+              <p className="font-semibold text-slate-900">{d.risk_score ? `${d.risk_score.toFixed(1)}%` : '-'}</p>
+              <p className="text-xs text-slate-500">Risk</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs font-mono text-slate-600">{d.model_version}</p>
+              <p className="text-xs text-slate-500">Version</p>
+            </div>
+            <div className="text-right text-slate-500 text-xs">
+              {new Date(d.created_at).toLocaleDateString()}<br />
+              {new Date(d.created_at).toLocaleTimeString()}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }

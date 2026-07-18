@@ -3,7 +3,7 @@ Analytics and reporting routes.
 Provides dashboard stats, model performance, and drift detection results.
 """
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required
+from flask_jwt_extended import jwt_required, get_jwt, get_jwt_identity
 from sqlalchemy import func, desc
 
 from app import db
@@ -23,7 +23,16 @@ analytics_bp = Blueprint('analytics', __name__)
 @analytics_bp.route('/dashboard', methods=['GET'])
 @jwt_required()
 def dashboard_stats():
-    """Get dashboard overview statistics."""
+    """Get dashboard overview statistics.
+
+    Staff (doctor/clinician/admin) see clinic-wide stats. A patient-role
+    login instead sees only their own linked record and diagnoses -- they
+    should never see other patients' data on their dashboard.
+    """
+    claims = get_jwt()
+    if claims.get('role') == 'patient':
+        return _patient_dashboard_stats()
+
     total_patients = Patient.query.count()
     total_diagnoses = Diagnosis.query.count()
     
@@ -80,11 +89,59 @@ def dashboard_stats():
             }
     
     return jsonify({
+        'role_view': 'staff',
         'total_patients': total_patients,
         'total_diagnoses': total_diagnoses,
         'diagnosis_by_type': diagnosis_by_type,
         'predictions': predictions,
         'confidence_by_type': confidence_by_type,
+        'recent_diagnoses': [d.to_dict() for d in recent],
+        'models': models_status,
+    }), 200
+
+
+def _patient_dashboard_stats():
+    """Scoped dashboard for a patient-role login: only their own data."""
+    user_id = int(get_jwt_identity())
+    patient = Patient.query.filter_by(user_id=user_id).first()
+
+    models_status = {}
+    for dtype in ['heart', 'diabetes', 'cancer']:
+        try:
+            trainer = ModelTrainer(dtype)
+            trainer._load_model()
+            models_status[dtype] = {'name': MODEL_INFO[dtype]['name'], 'trained': True}
+        except FileNotFoundError:
+            models_status[dtype] = {'name': MODEL_INFO[dtype]['name'], 'trained': False}
+
+    if not patient:
+        return jsonify({
+            'role_view': 'patient',
+            'linked': False,
+            'message': 'No patient record is linked to your account yet.',
+            'total_diagnoses': 0,
+            'diagnosis_by_type': {},
+            'recent_diagnoses': [],
+            'models': models_status,
+        }), 200
+
+    diagnoses = Diagnosis.query.filter_by(patient_id=patient.id)
+    total_diagnoses = diagnoses.count()
+
+    type_counts = db.session.query(
+        Diagnosis.diagnosis_type,
+        func.count(Diagnosis.id)
+    ).filter(Diagnosis.patient_id == patient.id).group_by(Diagnosis.diagnosis_type).all()
+    diagnosis_by_type = {t: c for t, c in type_counts}
+
+    recent = diagnoses.order_by(desc(Diagnosis.created_at)).limit(10).all()
+
+    return jsonify({
+        'role_view': 'patient',
+        'linked': True,
+        'patient': patient.to_dict(),
+        'total_diagnoses': total_diagnoses,
+        'diagnosis_by_type': diagnosis_by_type,
         'recent_diagnoses': [d.to_dict() for d in recent],
         'models': models_status,
     }), 200

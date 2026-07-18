@@ -35,7 +35,7 @@ export default function Patients() {
       .catch((err) => {
         const status = err?.response?.status
         if (status === 403) {
-          setError("You don't have permission to view patients. This requires a doctor, clinician, or admin role — ask an admin to update your role in the Admin Portal.")
+          setError("This page is for clinic staff only. If you're a patient looking for your own records, visit My Profile or My History in the sidebar instead.")
         } else if (status === 401) {
           setError('Your session has expired. Please log in again.')
         } else {

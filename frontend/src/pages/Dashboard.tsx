@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { Link } from 'react-router-dom'
 import { analyticsAPI } from '../services/api'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
@@ -7,13 +8,34 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 export default function Dashboard() {
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true)
+    setFailed(false)
     analyticsAPI.dashboard()
       .then(res => setData(res.data))
-      .catch(() => {})
+      .catch(() => setFailed(true))
       .finally(() => setLoading(false))
   }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  // The backend can be slow to wake up after sitting idle (free-tier cold
+  // start). Rather than show a permanent error after one failed attempt,
+  // retry automatically a couple of times with a short delay.
+  const [retryCount, setRetryCount] = useState(0)
+  useEffect(() => {
+    if (failed && retryCount < 2) {
+      const t = setTimeout(() => {
+        setRetryCount(c => c + 1)
+        load()
+      }, 4000)
+      return () => clearTimeout(t)
+    }
+  }, [failed, retryCount, load])
 
   if (loading) {
     return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div></div>
@@ -24,10 +46,22 @@ export default function Dashboard() {
       <div className="p-8">
         <h2 className="text-2xl font-bold text-slate-900 mb-4">Dashboard</h2>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
-          Unable to load dashboard data. Make sure the backend API is running.
+          <p className="mb-2">
+            Unable to load dashboard data. The backend may be waking up from being idle — this can take up to a minute.
+          </p>
+          <button
+            onClick={() => { setRetryCount(0); load() }}
+            className="text-sm font-medium bg-yellow-100 hover:bg-yellow-200 px-3 py-1.5 rounded-lg border border-yellow-300"
+          >
+            Try again
+          </button>
         </div>
       </div>
     )
+  }
+
+  if (data.role_view === 'patient') {
+    return <PatientDashboard data={data} />
   }
 
   const diagnosisTypeData = Object.entries(data.diagnosis_by_type || {}).map(([name, value]) => ({
@@ -125,6 +159,83 @@ export default function Dashboard() {
                     <td className="py-2 px-3">{d.prediction as string}</td>
                     <td className="py-2 px-3">{((d.confidence as number) * 100).toFixed(1)}%</td>
                     <td className="py-2 px-3">{d.risk_score ? `${(d.risk_score as number).toFixed(1)}%` : '-'}</td>
+                    <td className="py-2 px-3 text-slate-500">{new Date(d.created_at as string).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/** Dashboard shown to a patient-role login: only their own data, never the clinic-wide view. */
+function PatientDashboard({ data }: { data: Record<string, unknown> }) {
+  const linked = data.linked as boolean
+  const patient = data.patient as Record<string, unknown> | undefined
+  const recentDiagnoses = (data.recent_diagnoses || []) as Array<Record<string, unknown>>
+
+  if (!linked) {
+    return (
+      <div className="p-8">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4">Welcome</h2>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-900 max-w-xl">
+          <p className="mb-2">Your account isn't linked to a patient record yet.</p>
+          <p className="text-sm">
+            This usually connects automatically if you register with the same email your clinic has on file.
+            If you believe this is a mistake, ask the clinic to check your record.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-8">
+      <h2 className="text-2xl font-bold text-slate-900 mb-1">
+        Welcome, {patient?.first_name as string}
+      </h2>
+      <p className="text-slate-500 mb-6">
+        Patient Code: <span className="font-mono">{patient?.patient_id as string}</span>
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        <StatCard label="Your Total Reports" value={data.total_diagnoses as number} color="blue" />
+        <StatCard
+          label="Report Types"
+          value={Object.keys(data.diagnosis_by_type || {}).length}
+          color="purple"
+        />
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-slate-900">Your Recent Reports</h3>
+          <Link to="/diagnosis/history" className="text-sm text-blue-600 hover:underline">
+            View all history →
+          </Link>
+        </div>
+        {recentDiagnoses.length === 0 ? (
+          <p className="text-slate-500 text-sm">No reports yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-200">
+                  <th className="text-left py-2 px-3 font-medium text-slate-600">Type</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-600">Result</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-600">Confidence</th>
+                  <th className="text-left py-2 px-3 font-medium text-slate-600">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentDiagnoses.map((d) => (
+                  <tr key={d.id as number} className="border-b border-slate-100 hover:bg-slate-50">
+                    <td className="py-2 px-3 capitalize">{d.diagnosis_type as string}</td>
+                    <td className="py-2 px-3">{d.prediction as string}</td>
+                    <td className="py-2 px-3">{((d.confidence as number) * 100).toFixed(1)}%</td>
                     <td className="py-2 px-3 text-slate-500">{new Date(d.created_at as string).toLocaleDateString()}</td>
                   </tr>
                 ))}

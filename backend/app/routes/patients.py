@@ -36,6 +36,26 @@ def role_required(*roles):
     return decorator
 
 
+@patients_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_my_patient_record():
+    """Self-service: return the Patient record linked to the current login,
+    if any. Available to any logged-in user (not just staff) so a patient
+    can see their own patient code and details."""
+    user_id = int(get_jwt_identity())
+    patient = Patient.query.filter_by(user_id=user_id).first()
+
+    if not patient:
+        return jsonify({
+            'linked': False,
+            'message': 'No patient record is linked to your account yet. '
+                       'Ask the clinic to link your record, or make sure you '
+                       'registered with the same email on file with them.',
+        }), 404
+
+    return jsonify({'linked': True, 'patient': patient.to_dict()}), 200
+
+
 @patients_bp.route('', methods=['GET'])
 @role_required('doctor', 'admin', 'clinician')
 def list_patients():
@@ -118,6 +138,17 @@ def create_patient():
         emergency_contact_name=data.get('emergency_contact_name'),
         emergency_contact_phone=data.get('emergency_contact_phone'),
     )
+
+    # If a patient login account with this same email already exists and
+    # isn't linked to a record yet, connect it now so that user immediately
+    # sees this record as theirs.
+    if patient.email:
+        matching_user = User.query.filter(
+            db.func.lower(User.email) == patient.email.lower(),
+            User.role == 'patient',
+        ).first()
+        if matching_user and not Patient.query.filter_by(user_id=matching_user.id).first():
+            patient.user_id = matching_user.id
 
     db.session.add(patient)
     db.session.commit()

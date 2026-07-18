@@ -9,6 +9,7 @@ import DiagnosisHistory from './pages/DiagnosisHistory'
 import Analytics from './pages/Analytics'
 import MLOpsMonitor from './pages/MLOpsMonitor'
 import AdminUsers from './pages/AdminUsers'
+import MyProfile from './pages/MyProfile'
 import ColdStartBanner from './components/ColdStartBanner'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route index element={<Dashboard />} />
           <Route path="patients" element={<Patients />} />
+          <Route path="my-profile" element={<MyProfile />} />
           <Route path="diagnosis/new" element={<NewDiagnosis />} />
           <Route path="diagnosis/history/:patientId?" element={<DiagnosisHistory />} />
           <Route path="analytics" element={<Analytics />} />

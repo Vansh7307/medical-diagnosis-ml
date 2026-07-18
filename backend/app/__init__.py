@@ -62,10 +62,36 @@ def create_app(config_name=None):
 
     with app.app_context():
         db.create_all()
+        _run_lightweight_migrations()
 
     _register_cli_commands(app)
 
     return app
+
+
+def _run_lightweight_migrations():
+    """db.create_all() only creates missing TABLES, never adds columns to
+    tables that already exist. Since this project doesn't run `flask db
+    upgrade` on deploy, we check for a few specific columns we've added
+    after the initial schema and ALTER TABLE them in if missing. Safe to
+    run on every startup -- each check is a no-op once the column exists."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(db.engine)
+    try:
+        patient_columns = {col['name'] for col in inspector.get_columns('patients')}
+    except Exception:
+        return  # table doesn't exist yet (fresh DB) -- create_all() already handled it
+
+    if 'user_id' not in patient_columns:
+        with db.engine.connect() as conn:
+            conn.execute(text(
+                'ALTER TABLE patients ADD COLUMN user_id INTEGER REFERENCES users(id)'
+            ))
+            conn.execute(text(
+                'CREATE UNIQUE INDEX IF NOT EXISTS ix_patients_user_id ON patients(user_id)'
+            ))
+            conn.commit()
 
 
 def _register_cli_commands(app):

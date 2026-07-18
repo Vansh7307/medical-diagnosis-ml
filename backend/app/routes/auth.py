@@ -9,6 +9,7 @@ from marshmallow import ValidationError as MarshmallowValidationError
 
 from app import db
 from app.models.user import User
+from app.models.patient import Patient
 from app.models.login_history import LoginHistory
 from app.validation import (
     UserRegistrationSchema, UserLoginSchema, OTPVerifySchema, OTPResendSchema,
@@ -95,6 +96,21 @@ def register():
     db.session.add(user)
     db.session.commit()
 
+    # If a patient's medical record already exists (created by staff) with
+    # this same email and isn't linked to any login yet, connect it now so
+    # this user can see their own reports/history/profile.
+    linked_patient = None
+    if user.role == 'patient':
+        existing_record = Patient.query.filter(
+            Patient.email.isnot(None),
+            db.func.lower(Patient.email) == email.lower(),
+            Patient.user_id.is_(None),
+        ).first()
+        if existing_record:
+            existing_record.user_id = user.id
+            db.session.commit()
+            linked_patient = existing_record
+
     user.record_login()
     db.session.commit()
     _log_login_attempt(user.username, success=True, user_id=user.id)
@@ -104,11 +120,16 @@ def register():
         additional_claims={'username': user.username, 'role': user.role},
     )
 
-    return jsonify({
+    response = {
         'message': 'Registration successful',
         'access_token': access_token,
         'user': user.to_dict(),
-    }), 201
+    }
+    if linked_patient:
+        response['linked_patient'] = linked_patient.to_dict()
+        response['message'] = 'Registration successful. Linked to your existing patient record.'
+
+    return jsonify(response), 201
 
 
 @auth_bp.route('/verify-otp', methods=['POST'])

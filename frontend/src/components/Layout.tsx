@@ -1,12 +1,19 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 
-const navItems = [
+const staffNavItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/patients', label: 'Patients', icon: '👥' },
   { path: '/diagnosis/new', label: 'New Diagnosis', icon: '🔬' },
   { path: '/diagnosis/history', label: 'History', icon: '📋' },
   { path: '/analytics', label: 'Analytics', icon: '📈' },
   { path: '/mlops', label: 'MLOps', icon: '⚙️' },
+]
+
+const patientNavItems = [
+  { path: '/', label: 'Dashboard', icon: '📊' },
+  { path: '/my-profile', label: 'My Profile', icon: '🪪' },
+  { path: '/diagnosis/new', label: 'New Diagnosis', icon: '🔬' },
+  { path: '/diagnosis/history', label: 'My History', icon: '📋' },
 ]
 
 export default function Layout() {
@@ -27,9 +34,10 @@ export default function Layout() {
     navigate('/login')
   }
 
+  const baseItems = user.role === 'patient' ? patientNavItems : staffNavItems
   const items = user.role === 'admin'
-    ? [...navItems, { path: '/admin', label: 'Admin Portal', icon: '🛡️' }]
-    : navItems
+    ? [...baseItems, { path: '/admin', label: 'Admin Portal', icon: '🛡️' }]
+    : baseItems
 
   return (
     <div className="flex h-screen bg-gray-50">
