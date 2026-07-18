@@ -111,6 +111,10 @@ export const adminAPI = {
   updateStatus: (id: number, is_active: boolean) => api.put(`/admin/users/${id}/status`, { is_active }),
   loginHistory: (page = 1) => api.get(`/admin/login-history?page=${page}`),
   stats: () => api.get('/admin/stats'),
+  linkPatient: (username: string, patient_code: string) =>
+    api.post('/admin/link-patient', { username, patient_code }),
+  unlinkPatient: (patient_code: string) =>
+    api.delete('/admin/link-patient', { data: { patient_code } }),
 };
 
 // Patients

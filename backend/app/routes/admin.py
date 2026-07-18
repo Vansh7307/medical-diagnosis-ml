@@ -10,6 +10,7 @@ from marshmallow import Schema, fields, validate, ValidationError as Marshmallow
 
 from app import db
 from app.models.user import User
+from app.models.patient import Patient
 from app.models.login_history import LoginHistory
 from app.utils.decorators import role_required
 
@@ -46,6 +47,64 @@ def bootstrap_admin():
     user.role = 'admin'
     db.session.commit()
     return jsonify({'message': f'{username} is now admin'}), 200
+
+
+@admin_bp.route('/link-patient', methods=['POST'])
+@role_required('admin')
+def link_patient():
+    """Manually connect an existing login account to an existing patient
+    record. Needed for accounts/records created before auto-linking existed
+    -- new registrations link automatically, but old ones don't retroactively.
+
+    Body: { "username": "...", "patient_code": "PAT-AFD9477D" }
+    """
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    patient_code = data.get('patient_code', '').strip()
+
+    if not username or not patient_code:
+        return jsonify({'error': 'username and patient_code are both required'}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if not user:
+        return jsonify({'error': f'No user found with username "{username}"'}), 404
+
+    patient = Patient.query.filter_by(patient_id=patient_code).first()
+    if not patient:
+        return jsonify({'error': f'No patient found with code "{patient_code}"'}), 404
+
+    if patient.user_id and patient.user_id != user.id:
+        return jsonify({'error': f'That patient record is already linked to a different account (user id {patient.user_id})'}), 409
+
+    existing_link = Patient.query.filter_by(user_id=user.id).first()
+    if existing_link and existing_link.id != patient.id:
+        return jsonify({'error': f'That user is already linked to a different patient record ({existing_link.patient_id})'}), 409
+
+    patient.user_id = user.id
+    db.session.commit()
+
+    return jsonify({
+        'message': f'Linked {username} to patient {patient_code}',
+        'patient': patient.to_dict(),
+    }), 200
+
+
+@admin_bp.route('/link-patient', methods=['DELETE'])
+@role_required('admin')
+def unlink_patient():
+    """Remove the link between a patient record and a login account
+    (e.g. it was linked to the wrong person by mistake)."""
+    data = request.get_json() or {}
+    patient_code = data.get('patient_code', '').strip()
+
+    patient = Patient.query.filter_by(patient_id=patient_code).first()
+    if not patient:
+        return jsonify({'error': f'No patient found with code "{patient_code}"'}), 404
+
+    patient.user_id = None
+    db.session.commit()
+
+    return jsonify({'message': f'Unlinked patient {patient_code}'}), 200
 
 
 @admin_bp.route('/users', methods=['GET'])

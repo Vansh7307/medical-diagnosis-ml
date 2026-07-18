@@ -137,6 +137,8 @@ export default function AdminUsers() {
         </div>
       )}
 
+      <LinkPatientPanel />
+
       <div className="bg-white rounded-xl shadow-sm border border-slate-200">
         <div className="p-4 border-b border-slate-200 flex flex-wrap gap-3 items-center">
           <input
@@ -246,6 +248,79 @@ export default function AdminUsers() {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+function LinkPatientPanel() {
+  const [username, setUsername] = useState('')
+  const [patientCode, setPatientCode] = useState('')
+  const [status, setStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const handleLink = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setStatus(null)
+    setBusy(true)
+    try {
+      const res = await adminAPI.linkPatient(username.trim(), patientCode.trim())
+      setStatus({ type: 'success', text: res.data.message })
+      setUsername('')
+      setPatientCode('')
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      setStatus({ type: 'error', text: e.response?.data?.error || 'Failed to link account.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+      <h3 className="font-semibold text-slate-900 mb-1">Link Patient Record</h3>
+      <p className="text-sm text-slate-500 mb-3">
+        Connect an existing login account to an existing patient record, so that patient can see their own
+        profile and diagnosis history. (New registrations link automatically by matching email -- this is only
+        needed for accounts/records created before that existed, or when the emails don't match.)
+      </p>
+      <form onSubmit={handleLink} className="flex flex-wrap gap-3 items-end">
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Username</label>
+          <input
+            type="text"
+            required
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="e.g. jane_doe"
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm w-48"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-600 mb-1">Patient Code</label>
+          <input
+            type="text"
+            required
+            value={patientCode}
+            onChange={(e) => setPatientCode(e.target.value)}
+            placeholder="e.g. PAT-AFD9477D"
+            className="px-3 py-2 border border-slate-300 rounded-lg text-sm w-48 font-mono"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={busy}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+        >
+          {busy ? 'Linking…' : 'Link'}
+        </button>
+      </form>
+      {status && (
+        <div className={`mt-3 text-sm px-3 py-2 rounded-lg ${
+          status.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'
+        }`}>
+          {status.text}
+        </div>
+      )}
     </div>
   )
 }
