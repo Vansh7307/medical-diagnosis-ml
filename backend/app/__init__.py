@@ -52,7 +52,23 @@ def create_app(config_name=None):
 
     @app.route('/api/health')
     def health_check():
-        return {'status': 'healthy', 'service': app.config.get('API_TITLE'), 'version': app.config.get('API_VERSION')}, 200
+        # Also touch the database with a trivial query. Render's app server
+        # and Neon's database compute have SEPARATE idle/auto-suspend timers
+        # -- a ping that only hits this route without querying the DB keeps
+        # the app warm but lets Neon's compute suspend anyway, so login/data
+        # requests still stall waking the database back up. This keeps both warm.
+        db_status = 'unknown'
+        try:
+            db.session.execute(db.text('SELECT 1'))
+            db_status = 'connected'
+        except Exception:
+            db_status = 'unreachable'
+        return {
+            'status': 'healthy',
+            'service': app.config.get('API_TITLE'),
+            'version': app.config.get('API_VERSION'),
+            'database': db_status,
+        }, 200
 
     # Make sure every model is imported before create_all() so its table gets created.
     from app.models.user import User
