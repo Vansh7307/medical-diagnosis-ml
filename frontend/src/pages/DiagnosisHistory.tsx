@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { diagnosisAPI, patientsAPI } from '../services/api'
+import { MetricCard } from '../components/MetricCard'
 
 interface DiagnosisRecord {
   id: number
@@ -60,6 +61,10 @@ function MyDiagnosisHistory() {
   return (
     <div className="p-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">My Diagnosis History</h2>
+
+      <div className="max-w-xs mb-6">
+        <MetricCard label="Total Reports" value={diagnoses.length} accent="#0d9488" />
+      </div>
 
       {patientInfo && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -221,7 +226,12 @@ function StaffDiagnosisHistory({ initialPatientId }: { initialPatientId?: string
           {selectedPatientId ? 'No diagnosis records found for this patient.' : 'Search for a patient above to view their diagnosis history.'}
         </div>
       ) : (
-        <DiagnosisList diagnoses={diagnoses} />
+        <>
+          <div className="max-w-xs mb-4">
+            <MetricCard label="Reports Found" value={diagnoses.length} accent="#0d9488" />
+          </div>
+          <DiagnosisList diagnoses={diagnoses} />
+        </>
       )}
     </div>
   )

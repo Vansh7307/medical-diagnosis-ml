@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { adminAPI } from '../services/api'
+import { MetricCard, GaugeCard } from '../components/MetricCard'
 
 interface AdminUser {
   id: number
@@ -116,24 +117,14 @@ export default function AdminUsers() {
 
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            <p className="text-xs text-slate-500">Total Users</p>
-            <p className="text-2xl font-bold text-slate-900">{stats.total_users}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            <p className="text-xs text-slate-500">Verified</p>
-            <p className="text-2xl font-bold text-teal-600">{stats.verified_users}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            <p className="text-xs text-slate-500">Active</p>
-            <p className="text-2xl font-bold text-blue-600">{stats.active_users}</p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
-            <p className="text-xs text-slate-500">Successful / Failed Logins</p>
-            <p className="text-2xl font-bold text-slate-900">
-              {stats.successful_logins} <span className="text-red-500 text-lg">/ {stats.failed_logins}</span>
-            </p>
-          </div>
+          <MetricCard label="Total Users" value={stats.total_users} accent="#0d9488" />
+          <MetricCard label="Verified" value={stats.verified_users} accent="#3b82f6" />
+          <MetricCard label="Active" value={stats.active_users} accent="#8b5cf6" />
+          <GaugeCard
+            label="Login Success Rate"
+            percent={(stats.successful_logins / Math.max(stats.successful_logins + stats.failed_logins, 1)) * 100}
+            accent="#f59e0b"
+          />
         </div>
       )}
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { diagnosisAPI } from '../services/api'
 import { RadialBarChart, RadialBar, ResponsiveContainer } from 'recharts'
+import { MiniGauge } from '../components/MetricCard'
 
 type DiagnosisType = 'heart' | 'diabetes' | 'cancer'
 
@@ -196,15 +197,14 @@ export default function NewDiagnosis() {
                 <p className="text-sm text-slate-500">Risk Score</p>
               </div>
 
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <MiniGauge label="Confidence" percent={(result.confidence as number) * 100} accent="#1D9E75" />
+                <div className="bg-slate-50 rounded-lg p-3 border border-slate-200 flex flex-col justify-center">
+                  <p className="text-[11px] text-slate-500">Prediction</p>
+                  <p className="text-sm font-semibold text-slate-900 mt-0.5">{result.prediction_label as string}</p>
+                </div>
+              </div>
               <div className="space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Prediction</span>
-                  <span className="font-medium">{result.prediction_label as string}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Confidence</span>
-                  <span className="font-medium">{((result.confidence as number) * 100).toFixed(1)}%</span>
-                </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-slate-600">Model Version</span>
                   <span className="font-mono text-xs">{result.model_version as string}</span>
