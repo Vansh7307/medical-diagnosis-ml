@@ -102,7 +102,8 @@ export default function Login() {
         // Email verification is disabled -- registration logs the user in immediately.
         finishLogin(res.data.access_token, res.data.user)
       } else {
-        const res = await authAPI.login(form.username, form.password, captchaToken, form.captcha_answer)
+        const portal = tab === 'patient-existing' ? 'patient' : tab === 'doctor' ? 'doctor' : tab === 'clinician' ? 'clinician' : undefined
+        const res = await authAPI.login(form.username, form.password, captchaToken, form.captcha_answer, portal)
         finishLogin(res.data.access_token, res.data.user)
       }
     } catch (err: unknown) {

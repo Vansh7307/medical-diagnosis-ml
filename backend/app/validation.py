@@ -35,6 +35,11 @@ class UserLoginSchema(Schema):
     password = fields.String(required=True)
     captcha_token = fields.String(required=True)
     captcha_answer = fields.Raw(required=True)
+    # Which tab/portal the person logged in from (doctor/clinician/patient).
+    # Optional for backward compatibility; when present, the account's real
+    # role must match or the login is rejected.
+    portal = fields.String(required=False, load_default=None,
+                            validate=validate.OneOf(['doctor', 'clinician', 'patient']))
 
 
 class OTPVerifySchema(Schema):

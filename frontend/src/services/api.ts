@@ -79,8 +79,8 @@ export interface CaptchaChallenge {
 
 export const authAPI = {
   getCaptcha: () => api.get<CaptchaChallenge>('/auth/captcha'),
-  login: (username: string, password: string, captcha_token: string, captcha_answer: string) =>
-    api.post('/auth/login', { username, password, captcha_token, captcha_answer }),
+  login: (username: string, password: string, captcha_token: string, captcha_answer: string, portal?: string) =>
+    api.post('/auth/login', { username, password, captcha_token, captcha_answer, portal }),
   adminLogin: (username: string, password: string, captcha_token: string, captcha_answer: string) =>
     api.post('/auth/admin-login', { username, password, captcha_token, captcha_answer }),
   register: (data: {

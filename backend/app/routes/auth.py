@@ -345,6 +345,13 @@ def login():
         _log_login_attempt(username, success=False, reason='account_deactivated', user_id=user.id)
         return jsonify({'error': 'Account is deactivated'}), 403
 
+    portal = validated.get('portal')
+    if portal and user.role != portal:
+        _log_login_attempt(username, success=False, reason='wrong_portal', user_id=user.id)
+        return jsonify({
+            'error': f'This account is not a {portal} account. Please use the correct tab for your role.'
+        }), 403
+
     user.record_login()
     db.session.commit()
     _log_login_attempt(username, success=True, user_id=user.id)
