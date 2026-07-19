@@ -34,11 +34,17 @@ STATUS_SCHEMA = StatusUpdateSchema()
 @admin_bp.route('/bootstrap-admin', methods=['POST'])
 def bootstrap_admin():
     """One-time endpoint to promote user to admin. Disabled once an admin exists."""
+    import os
+    expected_secret = os.environ.get('BOOTSTRAP_ADMIN_SECRET')
+    if not expected_secret:
+        # Fail closed: if no secret is configured, this endpoint refuses to run
+        # rather than falling back to a guessable default.
+        return jsonify({'error': 'Bootstrap is not configured on this server.'}), 503
     if User.query.filter_by(role='admin').first():
         return jsonify({'error': 'An admin already exists. Use the admin portal to manage roles.'}), 403
     data = request.get_json() or {}
     secret = data.get('secret')
-    if secret != 'bootstrap-meddiagnose-2024':
+    if secret != expected_secret:
         return jsonify({'error': 'Invalid secret'}), 403
     username = data.get('username')
     user = User.query.filter_by(username=username).first()
