@@ -83,20 +83,26 @@ export default function Dashboard() {
 
   const recentDiagnoses = (data.recent_diagnoses || []) as Array<Record<string, unknown>>
 
+  const avgConfidencePct = (Object.values(data.confidence_by_type || {}) as number[]).reduce((a: number, b: number) => a + b, 0) / Math.max(Object.keys(data.confidence_by_type || {}).length, 1) * 100
+
   return (
     <div className="p-8">
-      <h2 className="text-2xl font-bold text-slate-900 mb-6">Dashboard</h2>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
+          <p className="text-sm text-slate-500">Clinic-wide overview, live from the diagnosis pipeline</p>
+        </div>
+        <span className="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live
+        </span>
+      </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <StatCard label="Total Patients" value={data.total_patients as number} color="blue" />
-        <StatCard label="Total Diagnoses" value={data.total_diagnoses as number} color="green" />
-        <StatCard label="Models Active" value={modelMetrics.filter(m => m.trained).length} color="purple" />
-        <StatCard
-          label="Avg Confidence"
-          value={`${((Object.values(data.confidence_by_type || {}) as number[]).reduce((a: number, b: number) => a + b, 0) / Math.max(Object.keys(data.confidence_by_type || {}).length, 1) * 100).toFixed(1)}%`}
-          color="amber"
-        />
+        <MetricCard label="Total Patients" value={data.total_patients as number} accent="#0d9488" />
+        <MetricCard label="Total Diagnoses" value={data.total_diagnoses as number} accent="#3b82f6" />
+        <MetricCard label="Models Active" value={modelMetrics.filter(m => m.trained).length} accent="#8b5cf6" />
+        <GaugeCard label="Avg Confidence" percent={avgConfidencePct} accent="#f59e0b" />
       </div>
 
       {/* Charts */}
@@ -202,11 +208,11 @@ function PatientDashboard({ data }: { data: Record<string, unknown> }) {
       </p>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        <StatCard label="Your Total Reports" value={data.total_diagnoses as number} color="blue" />
-        <StatCard
+        <MetricCard label="Your Total Reports" value={data.total_diagnoses as number} accent="#0d9488" />
+        <MetricCard
           label="Report Types"
           value={Object.keys(data.diagnosis_by_type || {}).length}
-          color="purple"
+          accent="#8b5cf6"
         />
       </div>
 
@@ -248,17 +254,35 @@ function PatientDashboard({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: number | string; color: string }) {
-  const colors: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-700 border-blue-200',
-    green: 'bg-green-50 text-green-700 border-green-200',
-    purple: 'bg-purple-50 text-purple-700 border-purple-200',
-    amber: 'bg-amber-50 text-amber-700 border-amber-200',
-  }
+function MetricCard({ label, value, accent }: { label: string; value: number | string; accent: string }) {
   return (
-    <div className={`rounded-xl border p-4 ${colors[color]}`}>
-      <p className="text-sm opacity-70">{label}</p>
-      <p className="text-2xl font-bold mt-1">{value}</p>
+    <div className="relative rounded-xl border border-slate-200 bg-white p-4 pl-5 overflow-hidden">
+      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: accent }} />
+      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+      <p className="text-3xl font-bold mt-1.5 text-slate-900">{value}</p>
+    </div>
+  )
+}
+
+function GaugeCard({ label, percent, accent }: { label: string; percent: number; accent: string }) {
+  const clamped = Math.max(0, Math.min(100, percent || 0))
+  const radius = 26
+  const circumference = 2 * Math.PI * radius
+  const offset = circumference * (1 - clamped / 100)
+
+  return (
+    <div className="relative rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-4">
+      <svg width="64" height="64" viewBox="0 0 64 64" className="shrink-0 -rotate-90">
+        <circle cx="32" cy="32" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="7" />
+        <circle
+          cx="32" cy="32" r={radius} fill="none" stroke={accent} strokeWidth="7"
+          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
+        />
+      </svg>
+      <div>
+        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
+        <p className="text-2xl font-bold mt-1 text-slate-900">{clamped.toFixed(1)}%</p>
+      </div>
     </div>
   )
 }
