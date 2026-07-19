@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { analyticsAPI } from '../services/api'
+import { MiniGauge } from '../components/MetricCard'
 
 export default function MLOpsMonitor() {
   const [driftData, setDriftData] = useState<Record<string, unknown> | null>(null)
@@ -46,9 +47,9 @@ export default function MLOpsMonitor() {
                 </div>
                 <p className="text-sm text-slate-600 mb-2">Version: <span className="font-mono text-xs">{m.current_version as string || 'N/A'}</span></p>
                 {metrics && (
-                  <div className="text-sm space-y-1">
-                    <p>Accuracy: <span className="font-semibold">{(metrics.accuracy * 100).toFixed(1)}%</span></p>
-                    <p>F1 Score: <span className="font-semibold">{(metrics.f1_score * 100).toFixed(1)}%</span></p>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <MiniGauge label="Accuracy" percent={metrics.accuracy * 100} accent="#378ADD" />
+                    <MiniGauge label="F1 Score" percent={metrics.f1_score * 100} accent="#1D9E75" />
                   </div>
                 )}
                 <p className="text-xs text-slate-400 mt-2">Version history: {versions.length} version(s)</p>

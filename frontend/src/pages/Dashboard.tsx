@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { analyticsAPI } from '../services/api'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { MetricCard, GaugeCard } from '../components/MetricCard'
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6']
 
@@ -249,39 +250,6 @@ function PatientDashboard({ data }: { data: Record<string, unknown> }) {
             </table>
           </div>
         )}
-      </div>
-    </div>
-  )
-}
-
-function MetricCard({ label, value, accent }: { label: string; value: number | string; accent: string }) {
-  return (
-    <div className="relative rounded-xl border border-slate-200 bg-white p-4 pl-5 overflow-hidden">
-      <div className="absolute left-0 top-0 bottom-0 w-1" style={{ backgroundColor: accent }} />
-      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-      <p className="text-3xl font-bold mt-1.5 text-slate-900">{value}</p>
-    </div>
-  )
-}
-
-function GaugeCard({ label, percent, accent }: { label: string; percent: number; accent: string }) {
-  const clamped = Math.max(0, Math.min(100, percent || 0))
-  const radius = 26
-  const circumference = 2 * Math.PI * radius
-  const offset = circumference * (1 - clamped / 100)
-
-  return (
-    <div className="relative rounded-xl border border-slate-200 bg-white p-4 flex items-center gap-4">
-      <svg width="64" height="64" viewBox="0 0 64 64" className="shrink-0 -rotate-90">
-        <circle cx="32" cy="32" r={radius} fill="none" stroke="#e2e8f0" strokeWidth="7" />
-        <circle
-          cx="32" cy="32" r={radius} fill="none" stroke={accent} strokeWidth="7"
-          strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round"
-        />
-      </svg>
-      <div>
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</p>
-        <p className="text-2xl font-bold mt-1 text-slate-900">{clamped.toFixed(1)}%</p>
       </div>
     </div>
   )

@@ -1,18 +1,22 @@
 import { useState, useEffect } from 'react'
-import { patientsAPI } from '../services/api'
+import { patientsAPI, diagnosisAPI } from '../services/api'
+import { MetricCard } from '../components/MetricCard'
 
 export default function MyProfile() {
   const [loading, setLoading] = useState(true)
   const [linked, setLinked] = useState(false)
   const [patient, setPatient] = useState<Record<string, unknown> | null>(null)
   const [message, setMessage] = useState('')
+  const [reportCount, setReportCount] = useState(0)
 
   useEffect(() => {
     patientsAPI.me()
       .then(res => {
         setLinked(true)
         setPatient(res.data.patient)
+        return diagnosisAPI.myHistory()
       })
+      .then(res => setReportCount(res?.data?.total || 0))
       .catch(err => {
         setLinked(false)
         setMessage(err.response?.data?.message || 'No patient record is linked to your account yet.')
@@ -48,6 +52,11 @@ export default function MyProfile() {
       <p className="text-slate-500 mb-6">
         Patient Code: <span className="font-mono font-medium">{patient.patient_id as string}</span>
       </p>
+
+      <div className="grid grid-cols-2 gap-4 mb-6 max-w-md">
+        <MetricCard label="Blood Type" value={(patient.blood_type as string) || '—'} accent="#ef4444" />
+        <MetricCard label="Total Reports" value={reportCount} accent="#0d9488" />
+      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
         {field('First Name', patient.first_name)}

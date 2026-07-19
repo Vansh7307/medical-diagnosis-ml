@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { patientsAPI, adminAPI } from '../services/api'
+import { MetricCard } from '../components/MetricCard'
 
 interface Patient {
   id: number
@@ -14,6 +15,7 @@ interface Patient {
   blood_type: string
   emergency_contact_name?: string
   emergency_contact_phone?: string
+  user_id?: number | null
   created_at: string
 }
 
@@ -77,6 +79,12 @@ export default function Patients() {
 
   return (
     <div className="p-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <MetricCard label="Total Patients" value={total} accent="#0d9488" />
+        <MetricCard label="Linked Accounts (this page)" value={patients.filter(p => p.user_id).length} accent="#3b82f6" />
+        <MetricCard label="Showing" value={patients.length} accent="#8b5cf6" />
+      </div>
+
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-slate-900">Patients</h2>
         <div className="flex gap-2">

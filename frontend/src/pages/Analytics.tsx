@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { analyticsAPI } from '../services/api'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
+import { MiniGauge } from '../components/MetricCard'
 
 export default function Analytics() {
   const [modelsData, setModelsData] = useState<Record<string, unknown> | null>(null)
@@ -56,19 +57,10 @@ export default function Analytics() {
             <div key={key} className="bg-white rounded-xl shadow-sm border p-4">
               <h4 className="font-semibold text-slate-900">{m.name as string}</h4>
               <p className="text-xs text-slate-500 mt-1">{m.description as string}</p>
-              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <div>
-                  <p className="text-lg font-bold text-blue-600">{metrics?.accuracy ? `${(metrics.accuracy * 100).toFixed(1)}%` : '-'}</p>
-                  <p className="text-xs text-slate-500">Accuracy</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-green-600">{metrics?.f1_score ? `${(metrics.f1_score * 100).toFixed(1)}%` : '-'}</p>
-                  <p className="text-xs text-slate-500">F1 Score</p>
-                </div>
-                <div>
-                  <p className="text-lg font-bold text-amber-600">{metrics?.roc_auc ? `${(metrics.roc_auc * 100).toFixed(1)}%` : '-'}</p>
-                  <p className="text-xs text-slate-500">AUC</p>
-                </div>
+              <div className="mt-3 grid grid-cols-3 gap-2">
+                <MiniGauge label="Accuracy" percent={(metrics?.accuracy || 0) * 100} accent="#378ADD" />
+                <MiniGauge label="F1 Score" percent={(metrics?.f1_score || 0) * 100} accent="#1D9E75" />
+                <MiniGauge label="AUC" percent={(metrics?.roc_auc || 0) * 100} accent="#BA7517" />
               </div>
               <p className="text-xs text-slate-400 mt-2">Version: {m.current_version as string || 'N/A'}</p>
             </div>
