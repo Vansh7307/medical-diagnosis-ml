@@ -10,6 +10,7 @@ interface Patient {
   gender: string
   email: string
   phone: string
+  address?: string
   blood_type: string
   emergency_contact_name?: string
   emergency_contact_phone?: string
@@ -213,6 +214,7 @@ function EditPatientModal({ patient, onClose, onSaved }: { patient: Patient; onC
     gender: patient.gender || 'Male',
     email: patient.email || '',
     phone: patient.phone || '',
+    address: patient.address || '',
     blood_type: patient.blood_type || '',
     emergency_contact_name: patient.emergency_contact_name || '',
     emergency_contact_phone: patient.emergency_contact_phone || '',
@@ -283,6 +285,11 @@ function EditPatientModal({ patient, onClose, onSaved }: { patient: Patient; onC
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
             <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} className="w-full px-3 py-2 border rounded-lg text-sm" />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Address</label>
+            <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder="Street, city, state, zip" className="w-full px-3 py-2 border rounded-lg text-sm" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
