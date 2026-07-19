@@ -6,7 +6,12 @@ services:
     plan: free
     pythonVersion: "3.12"
     buildCommand: pip install -r requirements.txt && python build.py
-    startCommand: gunicorn -w 2 -b 0.0.0.0:$PORT --timeout 120 run:app
+    # NOTE: worker count is intentionally 1. The rate limiter and CAPTCHA
+    # store state in-process (in-memory dicts), so multiple gunicorn workers
+    # would each have their own separate counters, silently letting clients
+    # get multiple times their intended rate limit. Don't raise this without
+    # first moving that shared state to Redis or similar.
+    startCommand: gunicorn -w 1 -b 0.0.0.0:$PORT --timeout 120 run:app
     healthCheckPath: /api/health
     envVars:
       - key: FLASK_ENV
