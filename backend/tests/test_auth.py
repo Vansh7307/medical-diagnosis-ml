@@ -1,6 +1,12 @@
 """
-Tests for authentication endpoints (register -> OTP verify -> login),
-now guarded by CAPTCHA and email verification.
+Tests for authentication endpoints.
+
+Email verification is now DISABLED for regular registration/login: an account
+is verified and logged in immediately on register. The /verify-otp and
+/resend-otp endpoints still exist (used for the admin portal, which does
+still enforce verification), so we test them against a manually-unverified
+account rather than through the normal registration flow, since that flow
+no longer produces one.
 """
 import pytest
 from tests.conftest import _solve_captcha
@@ -40,14 +46,16 @@ class TestCaptcha:
 
 
 class TestRegister:
-    """Test user registration."""
+    """Test user registration. Email verification is disabled: registering
+    logs the user in immediately with an access token."""
 
     def test_register_success(self, client):
         res = _register(client)
         assert res.status_code == 201
         data = res.get_json()
-        assert data['otp_required'] is True
-        assert data['username'] == 'newuser'
+        assert 'access_token' in data
+        assert data['user']['username'] == 'newuser'
+        assert data['user']['is_email_verified'] is True
 
     def test_register_wrong_captcha_answer(self, client):
         token, answer = _solve_captcha(client)
@@ -82,18 +90,35 @@ class TestRegister:
         res = _register(client, username='user2', email='same@test.com')
         assert res.status_code == 409
 
+    def test_cannot_self_register_as_admin_or_doctor(self, client):
+        token, answer = _solve_captcha(client)
+        res = client.post('/api/auth/register', json={
+            'username': 'sneaky', 'email': 'sneaky@test.com', 'password': 'password123',
+            'role': 'admin', 'captcha_token': token, 'captcha_answer': answer,
+        })
+        assert res.status_code == 403
+
 
 class TestOtpVerification:
-    """Test the email OTP verification step."""
+    """The OTP endpoints still exist (used by the admin portal's verification
+    requirement) but registration no longer produces an unverified account.
+    These tests exercise the endpoints directly against a manually-unverified
+    user to make sure that code path still works."""
 
-    def test_verify_otp_success(self, client):
+    def _make_unverified_user(self, client, username, email):
+        from app import db as _db
         from app.models.user import User
 
-        _register(client, username='otpuser', email='otp@test.com')
+        _register(client, username=username, email=email)
         with client.application.app_context():
-            user = User.query.filter_by(username='otpuser').first()
-            code = user.otp_code
+            user = User.query.filter_by(username=username).first()
+            user.is_email_verified = False
+            otp_code = user.generate_otp()
+            _db.session.commit()
+            return otp_code
 
+    def test_verify_otp_success(self, client):
+        code = self._make_unverified_user(client, 'otpuser', 'otp@test.com')
         res = client.post('/api/auth/verify-otp', json={'username': 'otpuser', 'otp_code': code})
         assert res.status_code == 200
         data = res.get_json()
@@ -101,15 +126,14 @@ class TestOtpVerification:
         assert data['user']['is_email_verified'] is True
 
     def test_verify_otp_wrong_code(self, client):
-        _register(client, username='otpwrong', email='otpwrong@test.com')
+        self._make_unverified_user(client, 'otpwrong', 'otpwrong@test.com')
         res = client.post('/api/auth/verify-otp', json={'username': 'otpwrong', 'otp_code': '000000'})
         assert res.status_code == 400
 
-    def test_login_blocked_until_verified(self, client):
-        _register(client, username='unverified', email='unverified@test.com')
-        res = _login(client, 'unverified', 'password123')
-        assert res.status_code == 403
-        assert res.get_json()['otp_required'] is True
+    def test_verify_otp_already_verified(self, client):
+        _register(client, username='alreadyverified', email='already@test.com')
+        res = client.post('/api/auth/verify-otp', json={'username': 'alreadyverified', 'otp_code': '000000'})
+        assert res.status_code == 400
 
     def test_resend_otp_does_not_leak_existence(self, client):
         res = client.post('/api/auth/resend-otp', json={'username': 'nobody-here'})
@@ -117,19 +141,11 @@ class TestOtpVerification:
 
 
 class TestLogin:
-    """Test user login (post email verification)."""
+    """Test user login. Registration auto-verifies now, so a freshly
+    registered account can log in immediately -- no verification step needed."""
 
-    def _register_and_verify(self, client, username, email, password='password123'):
-        from app import db as _db
-        from app.models.user import User
-        _register(client, username=username, email=email, password=password)
-        with client.application.app_context():
-            user = User.query.filter_by(username=username).first()
-            user.is_email_verified = True
-            _db.session.commit()
-
-    def test_login_success(self, client):
-        self._register_and_verify(client, 'loginuser', 'login@test.com')
+    def test_register_then_login_immediately(self, client):
+        _register(client, username='loginuser', email='login@test.com')
         res = _login(client, 'loginuser', 'password123')
         assert res.status_code == 200
         data = res.get_json()
@@ -137,7 +153,7 @@ class TestLogin:
         assert data['user']['username'] == 'loginuser'
 
     def test_login_wrong_password(self, client):
-        self._register_and_verify(client, 'wrongpw', 'wrongpw@test.com')
+        _register(client, username='wrongpw', email='wrongpw@test.com')
         res = _login(client, 'wrongpw', 'wrongpassword')
         assert res.status_code == 401
 
@@ -148,6 +164,44 @@ class TestLogin:
     def test_login_missing_fields(self, client):
         res = client.post('/api/auth/login', json={'username': 'test'})
         assert res.status_code == 422  # marshmallow validation error
+
+    def test_login_deactivated_account(self, client):
+        from app import db as _db
+        from app.models.user import User
+
+        _register(client, username='deactivated', email='deactivated@test.com')
+        with client.application.app_context():
+            user = User.query.filter_by(username='deactivated').first()
+            user.is_active = False
+            _db.session.commit()
+
+        res = _login(client, 'deactivated', 'password123')
+        assert res.status_code == 403
+
+    def test_login_wrong_portal_role_mismatch(self, client):
+        """A patient-role account trying to log in via the 'doctor' portal tab should be rejected."""
+        _register(client, username='patientuser', email='patientuser@test.com')
+        token, answer = _solve_captcha(client)
+        res = client.post('/api/auth/login', json={
+            'username': 'patientuser',
+            'password': 'password123',
+            'captcha_token': token,
+            'captcha_answer': answer,
+            'portal': 'doctor',
+        })
+        assert res.status_code == 403
+
+    def test_login_correct_portal_succeeds(self, client):
+        _register(client, username='patientuser2', email='patientuser2@test.com')
+        token, answer = _solve_captcha(client)
+        res = client.post('/api/auth/login', json={
+            'username': 'patientuser2',
+            'password': 'password123',
+            'captcha_token': token,
+            'captcha_answer': answer,
+            'portal': 'patient',
+        })
+        assert res.status_code == 200
 
 
 class TestProfile:
