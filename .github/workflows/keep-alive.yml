@@ -19,5 +19,6 @@ jobs:
       - name: Ping health check endpoint
         run: |
           curl -sS -o /dev/null -w "Status: %{http_code}\n" \
-            --max-time 30 \
+            --max-time 90 \
+            --retry 2 --retry-delay 5 \
             https://medical-diagnosis-ml-1.onrender.com/api/health

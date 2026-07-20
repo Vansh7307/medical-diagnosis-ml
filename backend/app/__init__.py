@@ -47,6 +47,7 @@ def create_app(config_name=None):
     from app.routes.openapi import get_openapi_spec
 
     @app.route('/api/openapi.json')
+    @app.route('/api/docs')
     def openapi_spec():
         return jsonify(get_openapi_spec(app))
 
