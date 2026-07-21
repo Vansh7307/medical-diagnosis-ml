@@ -274,7 +274,7 @@ export default function Login() {
           </div>
 
           {showTabs && (
-            <div className="mb-6 grid grid-cols-4 gap-1 bg-slate-100 rounded-xl p-1">
+            <div className="mb-6 grid grid-cols-2 sm:grid-cols-4 gap-1 bg-slate-100 rounded-xl p-1">
               {TABS.map((t) => (
                 <button
                   key={t.id}

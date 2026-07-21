@@ -30,7 +30,7 @@ export default function Analytics() {
   const models = modelsData || {}
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">Analytics</h2>
 
       {/* Model selector */}
@@ -57,7 +57,7 @@ export default function Analytics() {
             <div key={key} className="bg-white rounded-xl shadow-sm border p-4">
               <h4 className="font-semibold text-slate-900">{m.name as string}</h4>
               <p className="text-xs text-slate-500 mt-1">{m.description as string}</p>
-              <div className="mt-3 grid grid-cols-3 gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-2 min-w-0">
                 <MiniGauge label="Accuracy" percent={(metrics?.accuracy || 0) * 100} accent="#378ADD" />
                 <MiniGauge label="F1 Score" percent={(metrics?.f1_score || 0) * 100} accent="#1D9E75" />
                 <MiniGauge label="AUC" percent={(metrics?.roc_auc || 0) * 100} accent="#BA7517" />

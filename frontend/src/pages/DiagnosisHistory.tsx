@@ -59,7 +59,7 @@ function MyDiagnosisHistory() {
   }, [])
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">My Diagnosis History</h2>
 
       <div className="max-w-xs mb-6">
@@ -158,7 +158,7 @@ function StaffDiagnosisHistory({ initialPatientId }: { initialPatientId?: string
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">Diagnosis History</h2>
 
       <div className="mb-6 relative max-w-md">

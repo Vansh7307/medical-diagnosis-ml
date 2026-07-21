@@ -25,7 +25,7 @@ export default function MLOpsMonitor() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">MLOps Monitor</h2>
 
       {/* Model Versions */}

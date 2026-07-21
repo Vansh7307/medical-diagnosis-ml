@@ -78,7 +78,7 @@ export default function Patients() {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <MetricCard label="Total Patients" value={total} accent="#0d9488" />
         <MetricCard label="Linked Accounts (this page)" value={patients.filter(p => p.user_id).length} accent="#3b82f6" />
@@ -162,6 +162,7 @@ export default function Patients() {
         ) : patients.length === 0 ? (
           <div className="p-8 text-center text-slate-500">No patients found.</div>
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
@@ -177,13 +178,13 @@ export default function Patients() {
             <tbody>
               {patients.map(p => (
                 <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="py-3 px-4 font-mono text-xs">{p.patient_id}</td>
-                  <td className="py-3 px-4">{p.first_name} {p.last_name}</td>
-                  <td className="py-3 px-4">{p.gender}</td>
-                  <td className="py-3 px-4">{p.email || '-'}</td>
-                  <td className="py-3 px-4">{p.blood_type || '-'}</td>
-                  <td className="py-3 px-4 text-slate-500">{new Date(p.created_at).toLocaleDateString()}</td>
-                  <td className="py-3 px-4 space-x-3">
+                  <td className="py-3 px-4 font-mono text-xs whitespace-nowrap">{p.patient_id}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">{p.first_name} {p.last_name}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">{p.gender}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">{p.email || '-'}</td>
+                  <td className="py-3 px-4 whitespace-nowrap">{p.blood_type || '-'}</td>
+                  <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{new Date(p.created_at).toLocaleDateString()}</td>
+                  <td className="py-3 px-4 space-x-3 whitespace-nowrap">
                     <button onClick={() => setEditingPatient(p)} className="text-teal-600 hover:text-teal-800 text-xs">Edit</button>
                     <Link to={`/diagnosis/history/${p.id}`} className="text-blue-600 hover:text-blue-800 text-xs">History</Link>
                     <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800 text-xs">Delete</button>
@@ -192,6 +193,7 @@ export default function Patients() {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

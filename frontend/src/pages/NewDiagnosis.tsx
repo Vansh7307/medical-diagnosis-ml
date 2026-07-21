@@ -119,7 +119,7 @@ export default function NewDiagnosis() {
   const riskColor = riskScore > 70 ? '#ef4444' : riskScore > 40 ? '#f59e0b' : '#10b981'
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">New Diagnosis</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -127,7 +127,7 @@ export default function NewDiagnosis() {
         <div className="lg:col-span-2">
           <div className="bg-white rounded-xl shadow-sm border p-6">
             {/* Type selector */}
-            <div className="flex gap-2 mb-6">
+            <div className="flex flex-wrap gap-2 mb-6">
               {(['heart', 'diabetes', 'cancer'] as DiagnosisType[]).map(type => (
                 <button
                   key={type}

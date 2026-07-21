@@ -30,7 +30,7 @@ export default function MyProfile() {
 
   if (!linked || !patient) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <h2 className="text-2xl font-bold text-slate-900 mb-4">My Profile</h2>
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-900 max-w-xl">
           {message}

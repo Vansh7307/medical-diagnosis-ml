@@ -44,7 +44,7 @@ export default function Dashboard() {
 
   if (!data) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <h2 className="text-2xl font-bold text-slate-900 mb-4">Dashboard</h2>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
           <p className="mb-2">
@@ -87,7 +87,7 @@ export default function Dashboard() {
   const avgConfidencePct = (Object.values(data.confidence_by_type || {}) as number[]).reduce((a: number, b: number) => a + b, 0) / Math.max(Object.keys(data.confidence_by_type || {}).length, 1) * 100
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
@@ -186,7 +186,7 @@ function PatientDashboard({ data }: { data: Record<string, unknown> }) {
 
   if (!linked) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <h2 className="text-2xl font-bold text-slate-900 mb-4">Welcome</h2>
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-900 max-w-xl">
           <p className="mb-2">Your account isn't linked to a patient record yet.</p>
@@ -200,7 +200,7 @@ function PatientDashboard({ data }: { data: Record<string, unknown> }) {
   }
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-1">
         Welcome, {patient?.first_name as string}
       </h2>
