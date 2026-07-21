@@ -346,12 +346,33 @@ function LinkPatientPanel() {
     }
   }
 
+  const handleUnlink = async () => {
+    if (!patientCode.trim()) {
+      setStatus({ type: 'error', text: 'Enter the patient code first, then click Unlink.' })
+      return
+    }
+    if (!confirm(`Remove the account link for patient ${patientCode.trim()}? They will no longer be able to see their profile/history until relinked.`)) return
+    setStatus(null)
+    setBusy(true)
+    try {
+      const res = await adminAPI.unlinkPatient(patientCode.trim())
+      setStatus({ type: 'success', text: res.data.message })
+      setPatientCode('')
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      setStatus({ type: 'error', text: e.response?.data?.error || 'Failed to unlink account.' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
-      <h3 className="font-semibold text-slate-900 mb-1">Link Patient Account</h3>
+      <h3 className="font-semibold text-slate-900 mb-1">Link / Unlink Patient Account</h3>
       <p className="text-sm text-slate-500 mb-3">
         Enter a patient's code to connect their login account automatically (matched by the email on file).
         New registrations already link automatically -- this is only needed for older accounts/records.
+        Linked the wrong account by mistake? Enter the code and click Unlink.
       </p>
       <form onSubmit={handleLink} className="flex flex-wrap gap-3 items-end">
         <div>
@@ -370,7 +391,15 @@ function LinkPatientPanel() {
           disabled={busy}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
         >
-          {busy ? 'Linking…' : 'Link'}
+          {busy ? 'Working…' : 'Link'}
+        </button>
+        <button
+          type="button"
+          onClick={handleUnlink}
+          disabled={busy}
+          className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg text-sm font-medium hover:bg-red-100 disabled:opacity-50"
+        >
+          Unlink
         </button>
       </form>
       {status && (
