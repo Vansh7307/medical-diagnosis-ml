@@ -10,6 +10,7 @@ from app import db
 from app.models.diagnosis import Diagnosis
 from app.models.patient import Patient
 from app.ml.trainer import ModelTrainer
+from app.routes.diagnosis import _get_trainer
 from app.ml.evaluator import ModelEvaluator
 from app.ml.pipelines import MODEL_INFO
 from app.data.dataset_loader import load_heart_disease, load_diabetes, load_breast_cancer
@@ -72,8 +73,7 @@ def dashboard_stats():
     models_status = {}
     for dtype in ['heart', 'diabetes', 'cancer']:
         try:
-            trainer = ModelTrainer(dtype)
-            trainer._load_model()
+            trainer = _get_trainer(dtype)
             models_status[dtype] = {
                 'name': MODEL_INFO[dtype]['name'],
                 'trained': True,
@@ -108,8 +108,7 @@ def _patient_dashboard_stats():
     models_status = {}
     for dtype in ['heart', 'diabetes', 'cancer']:
         try:
-            trainer = ModelTrainer(dtype)
-            trainer._load_model()
+            trainer = _get_trainer(dtype)
             models_status[dtype] = {'name': MODEL_INFO[dtype]['name'], 'trained': True}
         except FileNotFoundError:
             models_status[dtype] = {'name': MODEL_INFO[dtype]['name'], 'trained': False}
@@ -156,8 +155,7 @@ def model_details():
     
     for dtype in ['heart', 'diabetes', 'cancer']:
         try:
-            trainer = ModelTrainer(dtype)
-            trainer._load_model()
+            trainer = _get_trainer(dtype)
             
             # Get version history
             versions = version_mgr.get_versions(dtype)
@@ -192,8 +190,7 @@ def model_evaluation(diagnosis_type):
         return jsonify({'error': f'Unknown diagnosis type: {diagnosis_type}'}), 400
 
     try:
-        trainer = ModelTrainer(diagnosis_type)
-        trainer._load_model()
+        trainer = _get_trainer(diagnosis_type)
     except FileNotFoundError:
         return jsonify({'error': f'No trained model found for {diagnosis_type}'}), 404
 
