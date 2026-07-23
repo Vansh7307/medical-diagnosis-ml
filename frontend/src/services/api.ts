@@ -6,6 +6,8 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 30000, // 30s -- generous enough for a genuine Render cold start,
+                  // but still surfaces a clear error/retry instead of hanging forever
 });
 
 // --- Cold-start detection -------------------------------------------------
@@ -51,15 +53,47 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401 responses
+// Handle 401 responses, and automatically retry safe (GET) requests that
+// fail due to a cold-starting backend. POST/PUT/DELETE are deliberately
+// NOT auto-retried here -- if one of those already reached the server
+// before the client saw a failure, blindly retrying could cause a
+// duplicate side effect (e.g. two diagnosis records saved). GET requests
+// have no such risk, and covers the vast majority of "had to hard refresh"
+// situations, since those happen mostly on page load.
+const MAX_RETRIES = 2;
+const RETRY_DELAY_MS = 4000;
+
+function isRetryableError(error: unknown): boolean {
+  const err = error as { config?: { method?: string }; response?: { status?: number }; code?: string };
+  const method = err.config?.method?.toLowerCase();
+  if (method !== 'get') return false;
+  // No response at all = network/connection-level failure (likely mid-wake-up)
+  if (!err.response) return true;
+  // Gateway-type errors are what Render's proxy returns while the app is
+  // still starting up, before it can even reach your Flask code
+  const status = err.response.status;
+  return status === 502 || status === 503 || status === 504;
+}
+
 api.interceptors.response.use(
   (response) => {
     clearColdStartTimer(response.config);
     maybeHideBanner();
     return response;
   },
-  (error) => {
+  async (error) => {
     clearColdStartTimer(error.config);
+
+    if (isRetryableError(error)) {
+      const config = error.config as typeof error.config & { _retryCount?: number };
+      config._retryCount = (config._retryCount || 0) + 1;
+      if (config._retryCount <= MAX_RETRIES) {
+        maybeHideBanner();
+        await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        return api(config);
+      }
+    }
+
     maybeHideBanner();
     if (error.response?.status === 401) {
       sessionStorage.removeItem('token');
