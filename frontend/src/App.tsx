@@ -11,6 +11,7 @@ import MLOpsMonitor from './pages/MLOpsMonitor'
 import AdminUsers from './pages/AdminUsers'
 import MyProfile from './pages/MyProfile'
 import ColdStartBanner from './components/ColdStartBanner'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = sessionStorage.getItem('token')
@@ -33,7 +34,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <>
+    <ErrorBoundary>
       <ColdStartBanner />
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -49,6 +50,6 @@ export default function App() {
           <Route path="admin" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         </Route>
       </Routes>
-    </>
+    </ErrorBoundary>
   )
 }
