@@ -138,6 +138,7 @@ export default function NewDiagnosis() {
       <h2 className="text-2xl font-bold text-slate-900 mb-6">New Diagnosis</h2>
 
       <ClinicalNotesPanel />
+      <LesionImagePanel />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Form */}
@@ -440,6 +441,123 @@ function ClinicalNotesPanel() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Lesion image classifier -- a real, working computer vision modality
+ * (classical HOG/GLCM feature extraction + Random Forest, deliberately
+ * not a deep learning CNN -- see backend/app/ml/lesion_analyzer.py for
+ * why). Independent input, alongside the clinical notes and structured
+ * tabular diagnosis models above. */
+function LesionImagePanel() {
+  const [file, setFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [expanded, setExpanded] = useState(false)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0]
+    if (!selected) return
+    setFile(selected)
+    setAnalysis(null)
+    setError('')
+    setPreviewUrl(URL.createObjectURL(selected))
+  }
+
+  const handleAnalyze = async () => {
+    if (!file) return
+    setLoading(true)
+    setError('')
+    setAnalysis(null)
+    try {
+      const res = await diagnosisAPI.analyzeImage(file)
+      setAnalysis(res.data.analysis)
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      setError(e.response?.data?.error || 'Unable to analyze this image right now.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resultStyle: Record<string, string> = {
+    benign: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    malignant: 'bg-red-50 text-red-700 border-red-200',
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border p-5 mb-6">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between text-left"
+      >
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-semibold text-slate-900">Lesion Image Analyzer</h3>
+          <span className="text-[10px] font-medium bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">Computer Vision</span>
+        </div>
+        <span className="text-slate-400 text-sm">{expanded ? '▲ Hide' : '▼ Upload an image'}</span>
+      </button>
+
+      {expanded && (
+        <div className="mt-4">
+          <p className="text-xs text-slate-500 mb-3">
+            Upload a skin lesion photo. A classical computer vision model (shape, color, and texture
+            feature extraction -- not a deep neural network) classifies it as benign or malignant-style.
+            Trained on synthetic images, for demonstration purposes only.
+          </p>
+
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/bmp"
+                onChange={handleFileChange}
+                className="block w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+              />
+              <button
+                onClick={handleAnalyze}
+                disabled={loading || !file}
+                className="mt-3 px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {loading ? 'Analyzing…' : 'Analyze Image'}
+              </button>
+            </div>
+            {previewUrl && (
+              <img src={previewUrl} alt="Preview" className="w-24 h-24 object-cover rounded-lg border border-slate-200" />
+            )}
+          </div>
+
+          {error && (
+            <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          {analysis && (
+            <div className="mt-4 border-t pt-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold border capitalize ${resultStyle[analysis.classification as string] || ''}`}>
+                  {analysis.classification as string}
+                </span>
+                <span className="text-sm text-slate-500">
+                  {((analysis.confidence as number) * 100).toFixed(1)}% confidence
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(analysis.probabilities as Record<string, number>).map(([label, prob]) => (
+                  <div key={label} className="bg-slate-50 rounded-lg p-2 text-center border border-slate-200">
+                    <p className="text-[10px] text-slate-500 capitalize">{label}</p>
+                    <p className="text-sm font-semibold text-slate-900">{(prob * 100).toFixed(1)}%</p>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

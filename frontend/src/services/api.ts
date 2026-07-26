@@ -179,6 +179,13 @@ export const diagnosisAPI = {
     api.post(`/diagnosis/explain/${diagnosisType}`, { features }),
   analyzeNotes: (text: string) =>
     api.post('/diagnosis/analyze-notes', { text }),
+  analyzeImage: (file: File) => {
+    const formData = new FormData()
+    formData.append('image', file)
+    return api.post('/diagnosis/analyze-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
   models: () => api.get('/diagnosis/models'),
 };
 

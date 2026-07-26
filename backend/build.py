@@ -32,6 +32,15 @@ def main():
               f"samples={notes_result['n_samples']}")
 
         print("\n" + "=" * 60)
+        print("STEP 4: Training Lesion Image Classifier (Classical CV)")
+        print("=" * 60)
+
+        from app.ml.lesion_analyzer import train_lesion_classifier
+        lesion_result = train_lesion_classifier()
+        print(f"Lesion classifier trained: accuracy={lesion_result['accuracy']}, "
+              f"samples={lesion_result['n_samples']}")
+
+        print("\n" + "=" * 60)
         print("BUILD SUCCESSFUL ✓")
         print("=" * 60)
         return 0

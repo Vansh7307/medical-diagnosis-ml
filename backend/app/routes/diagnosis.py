@@ -5,6 +5,7 @@ and SHAP-based model explainability.
 Includes input validation, rate limiting, and structured audit logging.
 """
 import json
+import os
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from marshmallow import ValidationError as MarshmallowValidationError
@@ -451,3 +452,49 @@ def analyze_notes():
         return jsonify({'error': str(e)}), 503
     except Exception:
         return jsonify({'error': 'Unable to analyze notes right now. Please try again.'}), 500
+
+
+@diagnosis_bp.route('/analyze-image', methods=['POST'])
+@jwt_required()
+@rate_limit('diagnosis_analyze_image')
+def analyze_image():
+    """
+    Classify an uploaded lesion image as benign or malignant-style using
+    classical computer vision (HOG + color histogram + GLCM texture
+    features, Random Forest classifier). Not a deep learning model --
+    see app.ml.lesion_analyzer for why.
+    """
+    if 'image' not in request.files:
+        return jsonify({'error': 'No image file provided (expected field name "image")'}), 400
+
+    file = request.files['image']
+    if not file or not file.filename:
+        return jsonify({'error': 'No image file selected'}), 400
+
+    allowed_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.webp'}
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in allowed_extensions:
+        return jsonify({'error': f'Unsupported file type. Allowed: {", ".join(sorted(allowed_extensions))}'}), 400
+
+    # Cap upload size to keep memory usage bounded on free-tier hosting
+    file.seek(0, os.SEEK_END)
+    size_bytes = file.tell()
+    file.seek(0)
+    if size_bytes > 5 * 1024 * 1024:
+        return jsonify({'error': 'Image must be 5MB or smaller'}), 400
+
+    try:
+        from PIL import Image
+        pil_image = Image.open(file.stream)
+        pil_image.load()  # force-decode now, so a corrupted file fails here, not later
+    except Exception:
+        return jsonify({'error': 'Could not read this file as an image'}), 400
+
+    try:
+        from app.ml.lesion_analyzer import analyze_lesion_image
+        result = analyze_lesion_image(pil_image)
+        return jsonify({'analysis': result}), 200
+    except FileNotFoundError as e:
+        return jsonify({'error': str(e)}), 503
+    except Exception:
+        return jsonify({'error': 'Unable to analyze this image right now. Please try again.'}), 500
