@@ -137,6 +137,8 @@ export default function NewDiagnosis() {
     <div className="p-4 md:p-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">New Diagnosis</h2>
 
+      <ClinicalNotesPanel />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Form */}
         <div className="lg:col-span-2">
@@ -318,6 +320,130 @@ function ExplanationChart({ explanation }: { explanation: Record<string, unknown
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> Increases risk</span>
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" /> Decreases risk</span>
       </div>
+    </div>
+  )
+}
+
+/** Free-text clinical notes urgency classifier -- a real, working NLP
+ * modality (TF-IDF + Logistic Regression) alongside the structured
+ * tabular diagnosis models above. Independent input, not required to
+ * run a structured diagnosis. */
+function ClinicalNotesPanel() {
+  const [notes, setNotes] = useState('')
+  const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [expanded, setExpanded] = useState(false)
+
+  const handleAnalyze = async () => {
+    if (!notes.trim()) return
+    setLoading(true)
+    setError('')
+    setAnalysis(null)
+    try {
+      const res = await diagnosisAPI.analyzeNotes(notes.trim())
+      setAnalysis(res.data.analysis)
+    } catch (err) {
+      const e = err as { response?: { data?: { error?: string } } }
+      setError(e.response?.data?.error || 'Unable to analyze notes right now.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const urgencyStyle: Record<string, string> = {
+    routine: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    urgent: 'bg-amber-50 text-amber-700 border-amber-200',
+    emergency: 'bg-red-50 text-red-700 border-red-200',
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border p-5 mb-6">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between text-left"
+      >
+        <div className="flex items-center gap-2">
+          <h3 className="text-base font-semibold text-slate-900">Clinical Notes Analyzer</h3>
+          <span className="text-[10px] font-medium bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-200">NLP</span>
+        </div>
+        <span className="text-slate-400 text-sm">{expanded ? '▲ Hide' : '▼ Analyze free-text notes'}</span>
+      </button>
+
+      {expanded && (
+        <div className="mt-4">
+          <p className="text-xs text-slate-500 mb-3">
+            Paste a patient's chief complaint or symptom description in plain text. A trained NLP model
+            classifies the urgency tier (routine / urgent / emergency) and shows which words drove that call.
+          </p>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="e.g. Patient reports severe chest pain radiating to the left arm, sweating and nausea..."
+            rows={3}
+            maxLength={2000}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+          />
+          <div className="flex justify-between items-center mt-2">
+            <span className="text-xs text-slate-400">{notes.length}/2000</span>
+            <button
+              onClick={handleAnalyze}
+              disabled={loading || !notes.trim()}
+              className="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+            >
+              {loading ? 'Analyzing…' : 'Analyze Notes'}
+            </button>
+          </div>
+
+          {error && (
+            <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
+          {analysis && (
+            <div className="mt-4 border-t pt-4">
+              <div className="flex items-center gap-3 mb-3">
+                <span className={`px-3 py-1 rounded-full text-sm font-semibold border capitalize ${urgencyStyle[analysis.urgency as string] || ''}`}>
+                  {analysis.urgency as string}
+                </span>
+                <span className="text-sm text-slate-500">
+                  {((analysis.confidence as number) * 100).toFixed(1)}% confidence
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {Object.entries(analysis.probabilities as Record<string, number>).map(([tier, prob]) => (
+                  <div key={tier} className="bg-slate-50 rounded-lg p-2 text-center border border-slate-200">
+                    <p className="text-[10px] text-slate-500 capitalize">{tier}</p>
+                    <p className="text-sm font-semibold text-slate-900">{(prob * 100).toFixed(1)}%</p>
+                  </div>
+                ))}
+              </div>
+
+              {((analysis.top_terms as Array<{ term: string; contribution: number }>) || []).length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-slate-600 mb-2">Words that drove this classification:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(analysis.top_terms as Array<{ term: string; contribution: number }>).map((t, idx) => (
+                      <span
+                        key={idx}
+                        className={`text-xs px-2 py-1 rounded-full border ${
+                          t.contribution >= 0
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}
+                      >
+                        {t.term}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

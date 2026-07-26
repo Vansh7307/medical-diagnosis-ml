@@ -21,7 +21,16 @@ def main():
         
         from app.ml.trainer import train_all_models
         train_all_models()
-        
+
+        print("\n" + "=" * 60)
+        print("STEP 3: Training Clinical Notes NLP Model")
+        print("=" * 60)
+
+        from app.ml.nlp_analyzer import train_clinical_notes_model
+        notes_result = train_clinical_notes_model()
+        print(f"Clinical notes model trained: accuracy={notes_result['accuracy']}, "
+              f"samples={notes_result['n_samples']}")
+
         print("\n" + "=" * 60)
         print("BUILD SUCCESSFUL ✓")
         print("=" * 60)

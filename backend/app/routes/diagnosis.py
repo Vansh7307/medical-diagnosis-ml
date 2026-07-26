@@ -423,3 +423,31 @@ def model_info():
         }
 
     return jsonify({'models': info}), 200
+
+
+@diagnosis_bp.route('/analyze-notes', methods=['POST'])
+@jwt_required()
+@rate_limit('diagnosis_analyze_notes')
+def analyze_notes():
+    """
+    Analyze free-text clinical notes and classify urgency (routine/urgent/
+    emergency) using a real trained TF-IDF + Logistic Regression NLP
+    classifier. Returns the predicted tier, confidence, and the specific
+    words in this note that drove the classification.
+    """
+    data = request.get_json()
+    if not data or not data.get('text', '').strip():
+        return jsonify({'error': 'text is required'}), 400
+
+    text = data['text'].strip()
+    if len(text) > 2000:
+        return jsonify({'error': 'text must be 2000 characters or fewer'}), 400
+
+    try:
+        from app.ml.nlp_analyzer import analyze_clinical_notes
+        result = analyze_clinical_notes(text)
+        return jsonify({'analysis': result}), 200
+    except FileNotFoundError as e:
+        return jsonify({'error': str(e)}), 503
+    except Exception:
+        return jsonify({'error': 'Unable to analyze notes right now. Please try again.'}), 500

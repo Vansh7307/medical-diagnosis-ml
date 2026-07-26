@@ -177,6 +177,8 @@ export const diagnosisAPI = {
   myHistory: () => api.get('/diagnosis/my-history'),
   explain: (diagnosisType: string, features: Record<string, number>) =>
     api.post(`/diagnosis/explain/${diagnosisType}`, { features }),
+  analyzeNotes: (text: string) =>
+    api.post('/diagnosis/analyze-notes', { text }),
   models: () => api.get('/diagnosis/models'),
 };
 
