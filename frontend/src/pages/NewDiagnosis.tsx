@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { diagnosisAPI } from '../services/api'
-import { RadialBarChart, RadialBar, ResponsiveContainer } from 'recharts'
+import { RadialBarChart, RadialBar, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Cell, Tooltip, ReferenceLine } from 'recharts'
 import { MiniGauge } from '../components/MetricCard'
 
 type DiagnosisType = 'heart' | 'diabetes' | 'cancer'
@@ -70,6 +70,8 @@ export default function NewDiagnosis() {
   const [patientId, setPatientId] = useState('')
   const [features, setFeatures] = useState<Record<string, number>>({})
   const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [explanation, setExplanation] = useState<Record<string, unknown> | null>(null)
+  const [explaining, setExplaining] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -87,6 +89,7 @@ export default function NewDiagnosis() {
     setLoading(true)
     setError('')
     setResult(null)
+    setExplanation(null)
 
     try {
       const pid = patientId.trim() ? patientId.trim() : undefined
@@ -99,6 +102,18 @@ export default function NewDiagnosis() {
         res = await diagnosisAPI.cancer(features, pid)
       }
       setResult(res.data.result)
+
+      // Fetch a real explanation for why the model predicted this -- non-fatal
+      // if it fails, the diagnosis result itself is still fully valid either way.
+      setExplaining(true)
+      try {
+        const explainRes = await diagnosisAPI.explain(selectedType, features)
+        setExplanation(explainRes.data.explanation)
+      } catch {
+        setExplanation(null)
+      } finally {
+        setExplaining(false)
+      }
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Prediction failed'
       setError(msg)
@@ -213,12 +228,95 @@ export default function NewDiagnosis() {
             </div>
           )}
 
+          {(explanation || explaining) && (
+            <div className="bg-white rounded-xl shadow-sm border p-6 mt-4">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-semibold text-slate-900">Why this result?</h3>
+                <span className="text-[10px] font-medium bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-200">SHAP · XAI</span>
+              </div>
+              <p className="text-xs text-slate-500 mb-4">
+                Each clinical feature's real contribution to this specific prediction, computed via SHAP
+                (SHapley Additive exPlanations) -- not a generic importance ranking, but the exact effect
+                for this patient's values.
+              </p>
+
+              {explaining ? (
+                <div className="text-sm text-slate-500 py-4 text-center">Computing explanation…</div>
+              ) : explanation?.available === false ? (
+                <div className="text-sm text-slate-500 py-2">{explanation.message as string}</div>
+              ) : (
+                <ExplanationChart explanation={explanation as Record<string, unknown>} />
+              )}
+            </div>
+          )}
+
           {!result && !error && (
             <div className="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-8 text-center text-slate-500 text-sm">
               Select a diagnosis type, fill in the features, and click "Run Diagnosis" to see results.
             </div>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+/** Renders real SHAP feature-contribution values as a signed horizontal bar
+ * chart -- red bars pushed the prediction toward higher risk, blue bars
+ * pushed it toward lower risk, for THIS specific patient's values. */
+function ExplanationChart({ explanation }: { explanation: Record<string, unknown> }) {
+  const topFeatures = (explanation.top_features || explanation.feature_importance || []) as Array<{
+    feature: string; importance: number
+  }>
+
+  if (!topFeatures.length) {
+    return <p className="text-sm text-slate-500">No explanation data available.</p>
+  }
+
+  const chartData = [...topFeatures].reverse().map(f => ({
+    name: f.feature,
+    value: f.importance,
+  }))
+
+  const baseValue = explanation.base_value as number | undefined
+  const predictionProbability = explanation.prediction_probability as number | undefined
+
+  return (
+    <div>
+      {typeof baseValue === 'number' && typeof predictionProbability === 'number' && (
+        <div className="flex items-center gap-4 mb-4 text-xs text-slate-600 bg-slate-50 rounded-lg p-3 border border-slate-200">
+          <div>
+            <span className="text-slate-400">Baseline risk (average patient): </span>
+            <span className="font-mono font-medium">{(baseValue * 100).toFixed(1)}%</span>
+          </div>
+          <span className="text-slate-300">→</span>
+          <div>
+            <span className="text-slate-400">This patient: </span>
+            <span className="font-mono font-medium">{(predictionProbability * 100).toFixed(1)}%</span>
+          </div>
+        </div>
+      )}
+
+      <ResponsiveContainer width="100%" height={Math.max(180, chartData.length * 32)}>
+        <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 20 }}>
+          <XAxis type="number" tick={{ fontSize: 11 }} />
+          <YAxis type="category" dataKey="name" width={140} tick={{ fontSize: 11 }} />
+          <ReferenceLine x={0} stroke="#94a3b8" />
+          <Tooltip
+            formatter={(value: number) => [value.toFixed(4), 'SHAP contribution']}
+            labelStyle={{ fontSize: 12 }}
+          />
+          <Bar dataKey="value" radius={3}>
+            {chartData.map((entry, idx) => (
+              <Cell key={idx} fill={entry.value >= 0 ? '#ef4444' : '#3b82f6'} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+
+      <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> Increases risk</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" /> Decreases risk</span>
       </div>
     </div>
   )

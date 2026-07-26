@@ -135,9 +135,20 @@ class ModelExplainer:
         # Get SHAP values
         shap_values = self.explainer.shap_values(X)
 
-        # Handle binary classification (returns list of arrays)
+        # SHAP's return shape has changed across versions:
+        # - older versions: a list of arrays, one per class -- shap_values[1] for positive class
+        # - newer versions (0.5x+): a single 3D array (samples, features, classes)
+        # Normalize both into a plain 1D array of per-feature values for this sample.
         if isinstance(shap_values, list):
-            shap_values = shap_values[1]  # Positive class
+            sample_values = np.asarray(shap_values[1])[0]  # positive class, first sample
+        else:
+            arr = np.asarray(shap_values)
+            if arr.ndim == 3:
+                sample_values = arr[0, :, 1]  # first sample, all features, positive class
+            elif arr.ndim == 2:
+                sample_values = arr[0]  # first sample, all features
+            else:
+                sample_values = arr
 
         # Get feature names
         feature_names = self._get_feature_names()
@@ -145,10 +156,11 @@ class ModelExplainer:
         # Build feature importance ranking
         importance = []
         for i, name in enumerate(feature_names):
+            value = float(sample_values[i])
             importance.append({
                 'feature': name,
-                'importance': round(float(shap_values[0][i]), 4),
-                'absolute_importance': round(abs(float(shap_values[0][i])), 4)
+                'importance': round(value, 4),
+                'absolute_importance': round(abs(value), 4)
             })
         importance.sort(key=lambda x: x['absolute_importance'], reverse=True)
 
