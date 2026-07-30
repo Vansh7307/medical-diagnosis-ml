@@ -20,6 +20,14 @@ interface Patient {
 }
 
 export default function Patients() {
+  let currentUser: { role?: string } = {}
+  try {
+    currentUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+  } catch {
+    // ignore -- Layout/App already guard against corrupted values globally
+  }
+  const canEditPatients = currentUser.role === 'admin' || currentUser.role === 'clinician'
+
   const [patients, setPatients] = useState<Patient[]>([])
   const [search, setSearch] = useState('')
   const [total, setTotal] = useState(0)
@@ -185,7 +193,9 @@ export default function Patients() {
                   <td className="py-3 px-4 whitespace-nowrap">{p.blood_type || '-'}</td>
                   <td className="py-3 px-4 text-slate-500 whitespace-nowrap">{new Date(p.created_at).toLocaleDateString()}</td>
                   <td className="py-3 px-4 space-x-3 whitespace-nowrap">
-                    <button onClick={() => setEditingPatient(p)} className="text-teal-600 hover:text-teal-800 text-xs">Edit</button>
+                    {canEditPatients && (
+                      <button onClick={() => setEditingPatient(p)} className="text-teal-600 hover:text-teal-800 text-xs">Edit</button>
+                    )}
                     <Link to={`/diagnosis/history/${p.id}`} className="text-blue-600 hover:text-blue-800 text-xs">History</Link>
                     <button onClick={() => handleDelete(p.id)} className="text-red-600 hover:text-red-800 text-xs">Delete</button>
                   </td>

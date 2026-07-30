@@ -174,10 +174,12 @@ def get_patient(patient_id):
 
 
 @patients_bp.route('/<int:patient_id>', methods=['PUT'])
-@role_required('doctor', 'admin', 'clinician')
+@role_required('admin', 'clinician')
 def update_patient(patient_id):
     """Update a patient record.
-    Requires: doctor, admin, or clinician role.
+    Requires: admin or clinician role. Doctors can view patient records
+    and diagnosis history, but cannot edit patient details -- that's
+    restricted to clinicians (who manage patient records) and admin.
     """
     patient = Patient.query.get(patient_id)
 

@@ -18,6 +18,7 @@ from app.ml.pipelines import MODEL_INFO
 from app.mlops.logger import MLLogger
 from app.mlops.monitoring import ModelMonitor
 from app.middleware import rate_limit
+from app.utils.decorators import role_required
 from app.validation import (
     HeartDiseaseFeaturesSchema,
     DiabetesFeaturesSchema,
@@ -125,7 +126,7 @@ def _run_prediction(diagnosis_type, features, patient_id=None, save_to_db=True):
 
 
 @diagnosis_bp.route('/heart', methods=['POST'])
-@jwt_required()
+@role_required('doctor', 'clinician', 'admin')
 @rate_limit('diagnosis_heart')
 def predict_heart():
     """Run heart disease prediction with input validation."""
@@ -161,7 +162,7 @@ def predict_heart():
 
 
 @diagnosis_bp.route('/diabetes', methods=['POST'])
-@jwt_required()
+@role_required('doctor', 'clinician', 'admin')
 @rate_limit('diagnosis_diabetes')
 def predict_diabetes():
     """Run diabetes risk prediction with input validation."""
@@ -197,7 +198,7 @@ def predict_diabetes():
 
 
 @diagnosis_bp.route('/cancer', methods=['POST'])
-@jwt_required()
+@role_required('doctor', 'clinician', 'admin')
 @rate_limit('diagnosis_cancer')
 def predict_cancer():
     """Run breast cancer prediction with input validation."""
@@ -233,7 +234,7 @@ def predict_cancer():
 
 
 @diagnosis_bp.route('/multi', methods=['POST'])
-@jwt_required()
+@role_required('doctor', 'clinician', 'admin')
 @rate_limit('diagnosis_multi')
 def predict_multi():
     """Run all models on a single patient with respective features."""
@@ -297,7 +298,7 @@ def predict_multi():
 
 
 @diagnosis_bp.route('/explain/<string:diagnosis_type>', methods=['POST'])
-@jwt_required()
+@role_required('doctor', 'clinician', 'admin')
 @rate_limit('diagnosis_explain')
 def explain_prediction(diagnosis_type):
     """
@@ -427,7 +428,7 @@ def model_info():
 
 
 @diagnosis_bp.route('/analyze-notes', methods=['POST'])
-@jwt_required()
+@role_required('doctor', 'clinician', 'admin')
 @rate_limit('diagnosis_analyze_notes')
 def analyze_notes():
     """
@@ -455,7 +456,7 @@ def analyze_notes():
 
 
 @diagnosis_bp.route('/analyze-image', methods=['POST'])
-@jwt_required()
+@role_required('doctor', 'clinician', 'admin')
 @rate_limit('diagnosis_analyze_image')
 def analyze_image():
     """

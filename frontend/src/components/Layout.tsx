@@ -13,7 +13,6 @@ const staffNavItems = [
 const patientNavItems = [
   { path: '/', label: 'Dashboard', icon: '📊' },
   { path: '/my-profile', label: 'My Profile', icon: '🪪' },
-  { path: '/diagnosis/new', label: 'New Diagnosis', icon: '🔬' },
   { path: '/diagnosis/history', label: 'My History', icon: '📋' },
 ]
 

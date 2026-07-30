@@ -66,6 +66,32 @@ const FORM_FIELDS: Record<DiagnosisType, { name: string; label: string; default:
 }
 
 export default function NewDiagnosis() {
+  let currentUser: { role?: string } = {}
+  try {
+    currentUser = JSON.parse(sessionStorage.getItem('user') || '{}')
+  } catch {
+    // ignore -- Layout/App already guard against corrupted values globally
+  }
+
+  if (currentUser.role === 'patient') {
+    return (
+      <div className="p-4 md:p-8">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4">New Diagnosis</h2>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-900 max-w-md">
+          Running new diagnoses is handled by clinic staff. You can view your existing reports and
+          history under <span className="font-medium">My History</span> in the sidebar.
+        </div>
+      </div>
+    )
+  }
+
+  return <StaffDiagnosisForm />
+}
+
+/** All the original form logic lives here so hooks are called unconditionally
+ * on every render -- this component only ever mounts for non-patient roles,
+ * since the wrapper above returns early before rendering it otherwise. */
+function StaffDiagnosisForm() {
   const [selectedType, setSelectedType] = useState<DiagnosisType>('heart')
   const [patientId, setPatientId] = useState('')
   const [features, setFeatures] = useState<Record<string, number>>({})
