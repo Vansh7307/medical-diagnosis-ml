@@ -22,8 +22,15 @@ function getErrorMessage(err: unknown, fallback: string): string {
   return fallback
 }
 
-export default function Login() {
-  const [tab, setTab] = useState<UserTab>('patient-existing')
+interface LoginProps {
+  /** When set, pins the portal to this role and hides the tab switcher --
+   * used by the separate /doctor/login, /clinician/login, /patient/login
+   * URLs. When absent (the generic /login route), all tabs are shown. */
+  lockedRole?: 'doctor' | 'clinician' | 'patient-existing'
+}
+
+export default function Login({ lockedRole }: LoginProps) {
+  const [tab, setTab] = useState<UserTab>(lockedRole || 'patient-existing')
   const [mode, setMode] = useState<Mode>('login')
   const [form, setForm] = useState<FormState>(EMPTY_FORM)
   const [otpCode, setOtpCode] = useState('')
@@ -211,7 +218,7 @@ export default function Login() {
     { id: 'patient-new', label: 'New Patient' },
   ]
 
-  const showTabs = mode === 'login' || mode === 'register'
+  const showTabs = !lockedRole && (mode === 'login' || mode === 'register')
 
   return (
     <div className="min-h-screen flex bg-white">
@@ -592,7 +599,7 @@ export default function Login() {
             </form>
           )}
 
-          {(mode === 'login' || mode === 'register') && (
+          {(mode === 'login' || mode === 'register') && (!lockedRole || lockedRole === 'patient-existing') && (
             <div className="mt-6 text-center text-sm text-slate-500">
               {mode === 'register' ? (
                 <>

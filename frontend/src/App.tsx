@@ -38,6 +38,9 @@ export default function App() {
       <ColdStartBanner />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/doctor/login" element={<Login lockedRole="doctor" />} />
+        <Route path="/clinician/login" element={<Login lockedRole="clinician" />} />
+        <Route path="/patient/login" element={<Login lockedRole="patient-existing" />} />
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route index element={<Dashboard />} />
