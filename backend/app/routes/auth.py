@@ -17,6 +17,7 @@ from app.validation import (
 )
 from app.utils.captcha import generate_captcha, verify_captcha
 from app.utils.email import send_otp_email, send_password_reset_email
+from app.utils.decorators import admin_ip_restricted
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -249,6 +250,7 @@ def reset_password():
     return jsonify({'message': 'Password reset successfully. You can now log in.'}), 200
 
 @auth_bp.route('/admin-login', methods=['POST'])
+@admin_ip_restricted
 def admin_login():
     """Dedicated login for the admin portal. Identical credential/CAPTCHA checks
     to the regular /login, but additionally rejects any account that isn't

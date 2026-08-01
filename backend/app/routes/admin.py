@@ -12,9 +12,29 @@ from app import db
 from app.models.user import User
 from app.models.patient import Patient
 from app.models.login_history import LoginHistory
-from app.utils.decorators import role_required
+from app.utils.decorators import role_required, get_client_ip
+import os
 
 admin_bp = Blueprint('admin', __name__)
+
+
+@admin_bp.before_request
+def _restrict_admin_ip():
+    """Restricts every route in this blueprint to the IP addresses listed
+    in ADMIN_ALLOWED_IPS (comma-separated). If that environment variable
+    isn't set at all, this does nothing (fails open) -- so the admin
+    portal isn't accidentally locked out before it's configured. Set the
+    variable to actually enforce the restriction."""
+    allowed_ips_raw = os.environ.get('ADMIN_ALLOWED_IPS', '').strip()
+    if not allowed_ips_raw:
+        return None  # not configured yet -- allow through
+
+    allowed_ips = [ip.strip() for ip in allowed_ips_raw.split(',') if ip.strip()]
+    if get_client_ip() not in allowed_ips:
+        return jsonify({
+            'error': 'Access to the admin portal is restricted to specific networks.'
+        }), 403
+    return None
 
 VALID_ROLES = ['patient', 'clinician', 'doctor', 'admin']
 

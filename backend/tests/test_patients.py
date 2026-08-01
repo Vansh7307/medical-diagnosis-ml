@@ -51,12 +51,42 @@ class TestPatientCRUD:
         res = client.get('/api/patients/99999', headers=auth_headers)
         assert res.status_code == 404
 
-    def test_update_patient(self, client, auth_headers, sample_patient):
+    def test_update_patient_blocked_for_doctor(self, client, auth_headers, sample_patient):
+        """Doctors can view patients but can no longer edit them -- only
+        clinician and admin can. auth_headers is a doctor-role user."""
         patient_id = sample_patient['id']
         res = client.put(f'/api/patients/{patient_id}', json={
             'first_name': 'UpdatedJohn',
             'blood_type': 'B+'
         }, headers=auth_headers)
+        assert res.status_code == 403
+
+    def test_update_patient_allowed_for_clinician(self, client, db, auth_headers, sample_patient):
+        """Clinicians can edit patient details."""
+        from app.models.user import User
+        from tests.conftest import _solve_captcha
+
+        with client.application.app_context():
+            user = User.query.filter_by(username='testuser').first()
+            if user:
+                user.role = 'clinician'
+                db.session.commit()
+
+        captcha_token, captcha_answer = _solve_captcha(client)
+        res = client.post('/api/auth/login', json={
+            'username': 'testuser',
+            'password': 'testpass123',
+            'captcha_token': captcha_token,
+            'captcha_answer': captcha_answer,
+        })
+        clinician_token = res.get_json()['access_token']
+        clinician_headers = {'Authorization': f'Bearer {clinician_token}'}
+
+        patient_id = sample_patient['id']
+        res = client.put(f'/api/patients/{patient_id}', json={
+            'first_name': 'UpdatedJohn',
+            'blood_type': 'B+'
+        }, headers=clinician_headers)
         assert res.status_code == 200
         data = res.get_json()
         assert data['patient']['first_name'] == 'UpdatedJohn'
