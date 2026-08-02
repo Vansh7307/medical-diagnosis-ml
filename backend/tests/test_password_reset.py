@@ -8,10 +8,10 @@ def _register_and_verify(client, username, email, password='password123'):
     from app import db as _db
     from app.models.user import User
 
-    token, answer = _solve_captcha(client)
+    token, _ = _solve_captcha(client)
     client.post('/api/auth/register', json={
         'username': username, 'email': email, 'password': password,
-        'captcha_token': token, 'captcha_answer': answer,
+        'recaptcha_token': token,
     })
     with client.application.app_context():
         user = User.query.filter_by(username=username).first()
@@ -21,18 +21,17 @@ def _register_and_verify(client, username, email, password='password123'):
 
 class TestForgotPassword:
     def test_forgot_password_unknown_email_does_not_leak(self, client):
-        token, answer = _solve_captcha(client)
+        token, _ = _solve_captcha(client)
         res = client.post('/api/auth/forgot-password', json={
-            'email': 'nobody@example.com', 'captcha_token': token, 'captcha_answer': answer,
+            'email': 'nobody@example.com', 'recaptcha_token': token,
         })
         assert res.status_code == 200
         assert 'reset code has been sent' in res.get_json()['message']
 
-    def test_forgot_password_wrong_captcha(self, client):
+    def test_forgot_password_invalid_recaptcha(self, client):
         _register_and_verify(client, 'resetuser1', 'reset1@test.com')
-        token, answer = _solve_captcha(client)
         res = client.post('/api/auth/forgot-password', json={
-            'email': 'reset1@test.com', 'captcha_token': token, 'captcha_answer': answer + 1,
+            'email': 'reset1@test.com', 'recaptcha_token': 'garbage-token',
         })
         assert res.status_code == 400
 
@@ -40,9 +39,9 @@ class TestForgotPassword:
         from app.models.user import User
 
         _register_and_verify(client, 'resetuser2', 'reset2@test.com')
-        token, answer = _solve_captcha(client)
+        token, _ = _solve_captcha(client)
         res = client.post('/api/auth/forgot-password', json={
-            'email': 'reset2@test.com', 'captcha_token': token, 'captcha_answer': answer,
+            'email': 'reset2@test.com', 'recaptcha_token': token,
         })
         assert res.status_code == 200
 
@@ -54,9 +53,9 @@ class TestForgotPassword:
 class TestResetPassword:
     def _get_reset_code(self, client, email):
         from app.models.user import User
-        token, answer = _solve_captcha(client)
+        token, _ = _solve_captcha(client)
         client.post('/api/auth/forgot-password', json={
-            'email': email, 'captcha_token': token, 'captcha_answer': answer,
+            'email': email, 'recaptcha_token': token,
         })
         with client.application.app_context():
             user = User.query.filter_by(email=email).first()
@@ -71,10 +70,10 @@ class TestResetPassword:
         })
         assert res.status_code == 200
 
-        token, answer = _solve_captcha(client)
+        token, _ = _solve_captcha(client)
         res = client.post('/api/auth/login', json={
             'username': 'resetuser3', 'password': 'newpass456',
-            'captcha_token': token, 'captcha_answer': answer,
+            'recaptcha_token': token,
         })
         assert res.status_code == 200
 
@@ -94,9 +93,9 @@ class TestResetPassword:
             'email': 'reset5@test.com', 'otp_code': code, 'new_password': 'newpass456',
         })
 
-        token, answer = _solve_captcha(client)
+        token, _ = _solve_captcha(client)
         res = client.post('/api/auth/login', json={
             'username': 'resetuser5', 'password': 'oldpass123',
-            'captcha_token': token, 'captcha_answer': answer,
+            'recaptcha_token': token,
         })
         assert res.status_code == 401

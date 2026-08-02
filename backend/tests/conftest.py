@@ -35,14 +35,11 @@ def client(app, db):
 
 
 def _solve_captcha(client):
-    """Fetch a CAPTCHA challenge and solve it (used to drive the auth endpoints in tests)."""
-    res = client.get('/api/auth/captcha')
-    data = res.get_json()
-    question = data['question']  # e.g. "7 + 3 = ?"
-    a, op, b, _eq, _q = question.split()
-    a, b = int(a), int(b)
-    answer = {'+': a + b, '-': a - b, '*': a * b}[op]
-    return data['captcha_token'], answer
+    """Returns a fixed reCAPTCHA test token accepted only in TESTING mode
+    (see app/utils/recaptcha.py) -- tests can't reach Google's real API,
+    and shouldn't need to. Kept the same function name/signature so every
+    existing test call site keeps working unchanged."""
+    return 'test-recaptcha-token', None
 
 
 @pytest.fixture(scope='function')
@@ -58,8 +55,7 @@ def auth_headers(client):
         'email': 'test@example.com',
         'password': 'testpass123',
         'full_name': 'Test User',
-        'captcha_token': token,
-        'captcha_answer': answer,
+        'recaptcha_token': token,
     })
 
     # Elevate role to doctor and mark email verified (bypassing the OTP email step in tests)
@@ -75,8 +71,7 @@ def auth_headers(client):
     res = client.post('/api/auth/login', json={
         'username': 'testuser',
         'password': 'testpass123',
-        'captcha_token': token,
-        'captcha_answer': answer,
+        'recaptcha_token': token,
     })
     token = res.get_json()['access_token']
     return {'Authorization': f'Bearer {token}'}

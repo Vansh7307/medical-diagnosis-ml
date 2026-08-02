@@ -7,42 +7,35 @@ is verified and logged in immediately on register. The /verify-otp and
 still enforce verification), so we test them against a manually-unverified
 account rather than through the normal registration flow, since that flow
 no longer produces one.
+
+reCAPTCHA replaced the old offline math CAPTCHA -- tests can't reach
+Google's real API, so `_solve_captcha` (see conftest.py) returns a fixed
+token that's only accepted when the app is running in TESTING mode.
 """
 import pytest
 from tests.conftest import _solve_captcha
 
 
 def _register(client, **overrides):
-    token, answer = _solve_captcha(client)
+    token, _ = _solve_captcha(client)
     payload = {
         'username': 'newuser',
         'email': 'new@example.com',
         'password': 'password123',
         'full_name': 'New User',
-        'captcha_token': token,
-        'captcha_answer': answer,
+        'recaptcha_token': token,
     }
     payload.update(overrides)
     return client.post('/api/auth/register', json=payload)
 
 
 def _login(client, username, password):
-    token, answer = _solve_captcha(client)
+    token, _ = _solve_captcha(client)
     return client.post('/api/auth/login', json={
         'username': username,
         'password': password,
-        'captcha_token': token,
-        'captcha_answer': answer,
+        'recaptcha_token': token,
     })
-
-
-class TestCaptcha:
-    def test_captcha_returns_question_and_token(self, client):
-        res = client.get('/api/auth/captcha')
-        assert res.status_code == 200
-        data = res.get_json()
-        assert 'question' in data
-        assert 'captcha_token' in data
 
 
 class TestRegister:
@@ -57,14 +50,18 @@ class TestRegister:
         assert data['user']['username'] == 'newuser'
         assert data['user']['is_email_verified'] is True
 
-    def test_register_wrong_captcha_answer(self, client):
-        token, answer = _solve_captcha(client)
+    def test_register_missing_recaptcha(self, client):
         res = client.post('/api/auth/register', json={
-            'username': 'newuser2',
-            'email': 'new2@example.com',
+            'username': 'norecaptcha', 'email': 'norecaptcha@test.com',
             'password': 'password123',
-            'captcha_token': token,
-            'captcha_answer': answer + 1,  # deliberately wrong
+        })
+        assert res.status_code == 422  # marshmallow: recaptcha_token is required
+
+    def test_register_invalid_recaptcha_token(self, client):
+        """A garbage token (not the test bypass token) should fail verification."""
+        res = client.post('/api/auth/register', json={
+            'username': 'badrecaptcha', 'email': 'badrecaptcha@test.com',
+            'password': 'password123', 'recaptcha_token': 'not-a-real-token',
         })
         assert res.status_code == 400
 
@@ -73,10 +70,10 @@ class TestRegister:
         assert res.status_code == 422  # marshmallow validation error
 
     def test_register_short_password(self, client):
-        token, answer = _solve_captcha(client)
+        token, _ = _solve_captcha(client)
         res = client.post('/api/auth/register', json={
             'username': 'test', 'email': 'test@test.com', 'password': 'abc',
-            'captcha_token': token, 'captcha_answer': answer,
+            'recaptcha_token': token,
         })
         assert res.status_code == 422
 
@@ -91,10 +88,10 @@ class TestRegister:
         assert res.status_code == 409
 
     def test_cannot_self_register_as_admin_or_doctor(self, client):
-        token, answer = _solve_captcha(client)
+        token, _ = _solve_captcha(client)
         res = client.post('/api/auth/register', json={
             'username': 'sneaky', 'email': 'sneaky@test.com', 'password': 'password123',
-            'role': 'admin', 'captcha_token': token, 'captcha_answer': answer,
+            'role': 'admin', 'recaptcha_token': token,
         })
         assert res.status_code == 403
 
@@ -165,6 +162,14 @@ class TestLogin:
         res = client.post('/api/auth/login', json={'username': 'test'})
         assert res.status_code == 422  # marshmallow validation error
 
+    def test_login_invalid_recaptcha_token(self, client):
+        _register(client, username='recaptchafail', email='recaptchafail@test.com')
+        res = client.post('/api/auth/login', json={
+            'username': 'recaptchafail', 'password': 'password123',
+            'recaptcha_token': 'garbage-token',
+        })
+        assert res.status_code == 400
+
     def test_login_deactivated_account(self, client):
         from app import db as _db
         from app.models.user import User
@@ -181,24 +186,22 @@ class TestLogin:
     def test_login_wrong_portal_role_mismatch(self, client):
         """A patient-role account trying to log in via the 'doctor' portal tab should be rejected."""
         _register(client, username='patientuser', email='patientuser@test.com')
-        token, answer = _solve_captcha(client)
+        token, _ = _solve_captcha(client)
         res = client.post('/api/auth/login', json={
             'username': 'patientuser',
             'password': 'password123',
-            'captcha_token': token,
-            'captcha_answer': answer,
+            'recaptcha_token': token,
             'portal': 'doctor',
         })
         assert res.status_code == 403
 
     def test_login_correct_portal_succeeds(self, client):
         _register(client, username='patientuser2', email='patientuser2@test.com')
-        token, answer = _solve_captcha(client)
+        token, _ = _solve_captcha(client)
         res = client.post('/api/auth/login', json={
             'username': 'patientuser2',
             'password': 'password123',
-            'captcha_token': token,
-            'captcha_answer': answer,
+            'recaptcha_token': token,
             'portal': 'patient',
         })
         assert res.status_code == 200

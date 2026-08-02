@@ -15,7 +15,7 @@ from app.validation import (
     UserRegistrationSchema, UserLoginSchema, OTPVerifySchema, OTPResendSchema,
     ForgotPasswordSchema, ResetPasswordSchema,
 )
-from app.utils.captcha import generate_captcha, verify_captcha
+from app.utils.recaptcha import verify_recaptcha
 from app.utils.email import send_otp_email, send_password_reset_email
 from app.utils.decorators import admin_ip_restricted
 
@@ -42,12 +42,6 @@ def _log_login_attempt(username, success, reason=None, user_id=None):
     db.session.commit()
 
 
-@auth_bp.route('/captcha', methods=['GET'])
-def captcha():
-    """Return a fresh CAPTCHA challenge for the login/register form."""
-    return jsonify(generate_captcha()), 200
-
-
 @auth_bp.route('/register', methods=['POST'])
 def register():
     """Register a new user. Requires CAPTCHA; sends OTP email for verification.
@@ -63,7 +57,7 @@ def register():
     except MarshmallowValidationError as e:
         return jsonify({'error': 'Validation failed', 'details': e.messages}), 422
 
-    ok, captcha_error = verify_captcha(validated['captcha_token'], validated['captcha_answer'])
+    ok, captcha_error = verify_recaptcha(validated['recaptcha_token'], request.remote_addr)
     if not ok:
         return jsonify({'error': captcha_error}), 400
 
@@ -208,7 +202,7 @@ def forgot_password():
     except MarshmallowValidationError as e:
         return jsonify({'error': 'Validation failed', 'details': e.messages}), 422
 
-    ok, captcha_error = verify_captcha(validated['captcha_token'], validated['captcha_answer'])
+    ok, captcha_error = verify_recaptcha(validated['recaptcha_token'], request.remote_addr)
     if not ok:
         return jsonify({'error': captcha_error}), 400
 
@@ -266,7 +260,7 @@ def admin_login():
     except MarshmallowValidationError as e:
         return jsonify({'error': 'Validation failed', 'details': e.messages}), 422
 
-    ok, captcha_error = verify_captcha(validated['captcha_token'], validated['captcha_answer'])
+    ok, captcha_error = verify_recaptcha(validated['recaptcha_token'], request.remote_addr)
     if not ok:
         return jsonify({'error': captcha_error}), 400
 
@@ -329,7 +323,7 @@ def login():
     except MarshmallowValidationError as e:
         return jsonify({'error': 'Validation failed', 'details': e.messages}), 422
 
-    ok, captcha_error = verify_captcha(validated['captcha_token'], validated['captcha_answer'])
+    ok, captcha_error = verify_recaptcha(validated['recaptcha_token'], request.remote_addr)
     if not ok:
         return jsonify({'error': captcha_error}), 400
 

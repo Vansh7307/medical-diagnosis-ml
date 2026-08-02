@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI } from '../services/api'
+import Recaptcha, { type RecaptchaHandle } from '../components/Recaptcha'
 
 type Mode = 'login' | 'register' | 'verify-otp' | 'forgot-password' | 'reset-password'
 type UserTab = 'doctor' | 'clinician' | 'patient-existing' | 'patient-new'
@@ -10,10 +11,9 @@ interface FormState {
   email: string
   password: string
   full_name: string
-  captcha_answer: string
 }
 
-const EMPTY_FORM: FormState = { username: '', email: '', password: '', full_name: '', captcha_answer: '' }
+const EMPTY_FORM: FormState = { username: '', email: '', password: '', full_name: '' }
 
 function getErrorMessage(err: unknown, fallback: string): string {
   const e = err as { response?: { data?: { error?: string; details?: unknown } } }
@@ -43,28 +43,15 @@ export default function Login({ lockedRole }: LoginProps) {
   const [resendCooldown, setResendCooldown] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
 
-  const [captchaQuestion, setCaptchaQuestion] = useState('')
   const [captchaToken, setCaptchaToken] = useState('')
+  const recaptchaRef = useRef<RecaptchaHandle>(null)
 
   const navigate = useNavigate()
 
-  const refreshCaptcha = useCallback(async () => {
-    try {
-      const res = await authAPI.getCaptcha()
-      setCaptchaQuestion(res.data.question)
-      setCaptchaToken(res.data.captcha_token)
-      setForm((f) => ({ ...f, captcha_answer: '' }))
-    } catch {
-      setCaptchaQuestion('')
-      setCaptchaToken('')
-    }
-  }, [])
-
-  useEffect(() => {
-    if (mode === 'login' || mode === 'register' || mode === 'forgot-password') {
-      refreshCaptcha()
-    }
-  }, [mode, refreshCaptcha])
+  const resetRecaptcha = () => {
+    setCaptchaToken('')
+    recaptchaRef.current?.reset()
+  }
 
   useEffect(() => {
     if (resendCooldown <= 0) return
@@ -103,14 +90,13 @@ export default function Login({ lockedRole }: LoginProps) {
           email: form.email,
           password: form.password,
           full_name: form.full_name,
-          captcha_token: captchaToken,
-          captcha_answer: form.captcha_answer,
+          recaptcha_token: captchaToken,
         })
         // Email verification is disabled -- registration logs the user in immediately.
         finishLogin(res.data.access_token, res.data.user)
       } else {
         const portal = tab === 'patient-existing' ? 'patient' : tab === 'doctor' ? 'doctor' : tab === 'clinician' ? 'clinician' : undefined
-        const res = await authAPI.login(form.username, form.password, captchaToken, form.captcha_answer, portal)
+        const res = await authAPI.login(form.username, form.password, captchaToken, portal)
         finishLogin(res.data.access_token, res.data.user)
       }
     } catch (err: unknown) {
@@ -123,7 +109,7 @@ export default function Login({ lockedRole }: LoginProps) {
       } else {
         setError(getErrorMessage(err, 'Authentication failed'))
       }
-      refreshCaptcha()
+      resetRecaptcha()
     } finally {
       setLoading(false)
     }
@@ -162,13 +148,13 @@ export default function Login({ lockedRole }: LoginProps) {
     setNotice('')
     setLoading(true)
     try {
-      await authAPI.forgotPassword(form.email, captchaToken, form.captcha_answer)
+      await authAPI.forgotPassword(form.email, captchaToken)
       setNotice(`If an account exists for ${form.email}, a reset code has been sent.`)
       setMode('reset-password')
       setResendCooldown(30)
     } catch (err: unknown) {
       setError(getErrorMessage(err, 'Could not send reset code'))
-      refreshCaptcha()
+      resetRecaptcha()
     } finally {
       setLoading(false)
     }
@@ -327,28 +313,7 @@ export default function Login({ lockedRole }: LoginProps) {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Security check</label>
-                <div className="flex gap-2">
-                  <div className="flex-1 flex items-center justify-center bg-slate-100 border border-slate-300 rounded-lg font-mono text-lg tracking-wider text-slate-800 select-none">
-                    {captchaQuestion || '...'}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={refreshCaptcha}
-                    title="Get a new question"
-                    className="px-3 border border-slate-300 rounded-lg text-slate-500 hover:bg-slate-50"
-                  >
-                    ↻
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  required
-                  value={form.captcha_answer}
-                  onChange={(e) => setForm({ ...form, captcha_answer: e.target.value })}
-                  className="mt-2 w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Your answer"
-                />
+                <Recaptcha ref={recaptchaRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken('')} />
               </div>
 
               <button
@@ -560,33 +525,12 @@ export default function Login({ lockedRole }: LoginProps) {
                 </div>
               </div>
 
-              {/* CAPTCHA */}
+              {/* reCAPTCHA */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Security check
                 </label>
-                <div className="flex gap-2">
-                  <div className="flex-1 flex items-center justify-center bg-slate-100 border border-slate-300 rounded-lg font-mono text-lg tracking-wider text-slate-800 select-none">
-                    {captchaQuestion || '...'}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={refreshCaptcha}
-                    title="Get a new question"
-                    className="px-3 border border-slate-300 rounded-lg text-slate-500 hover:bg-slate-50"
-                  >
-                    ↻
-                  </button>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  required
-                  value={form.captcha_answer}
-                  onChange={(e) => setForm({ ...form, captcha_answer: e.target.value })}
-                  className="mt-2 w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
-                  placeholder="Your answer"
-                />
+                <Recaptcha ref={recaptchaRef} onVerify={setCaptchaToken} onExpire={() => setCaptchaToken('')} />
               </div>
 
               <button

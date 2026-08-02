@@ -76,8 +76,7 @@ class TestPatientCRUD:
         res = client.post('/api/auth/login', json={
             'username': 'testuser',
             'password': 'testpass123',
-            'captcha_token': captcha_token,
-            'captcha_answer': captcha_answer,
+            'recaptcha_token': captcha_token,
         })
         clinician_token = res.get_json()['access_token']
         clinician_headers = {'Authorization': f'Bearer {clinician_token}'}
@@ -114,8 +113,7 @@ class TestPatientCRUD:
         res = client.post('/api/auth/login', json={
             'username': 'testuser',
             'password': 'testpass123',
-            'captcha_token': captcha_token,
-            'captcha_answer': captcha_answer,
+            'recaptcha_token': captcha_token,
         })
         admin_token = res.get_json()['access_token']
         admin_headers = {'Authorization': f'Bearer {admin_token}'}

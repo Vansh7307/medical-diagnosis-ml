@@ -26,15 +26,13 @@ class UserRegistrationSchema(Schema):
         validate=validate.OneOf(['patient', 'doctor', 'admin']),
         load_default='patient'
     )
-    captcha_token = fields.String(required=True)
-    captcha_answer = fields.Raw(required=True)
+    recaptcha_token = fields.String(required=True)
 
 
 class UserLoginSchema(Schema):
     username = fields.String(required=True)
     password = fields.String(required=True)
-    captcha_token = fields.String(required=True)
-    captcha_answer = fields.Raw(required=True)
+    recaptcha_token = fields.String(required=True)
     # Which tab/portal the person logged in from (doctor/clinician/patient).
     # Optional for backward compatibility; when present, the account's real
     # role must match or the login is rejected.
@@ -56,8 +54,7 @@ class OTPResendSchema(Schema):
 
 class ForgotPasswordSchema(Schema):
     email = fields.Email(required=True)
-    captcha_token = fields.String(required=True)
-    captcha_answer = fields.Raw(required=True)
+    recaptcha_token = fields.String(required=True)
 
 
 class ResetPasswordSchema(Schema):

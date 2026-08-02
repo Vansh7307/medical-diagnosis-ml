@@ -22,7 +22,7 @@ class TestAdminUserManagement:
         token, answer = _solve_captcha(client)
         client.post('/api/auth/register', json={
             'username': 'adminuser', 'email': 'admin@test.com', 'password': 'adminpass123',
-            'captcha_token': token, 'captcha_answer': answer,
+            'recaptcha_token': token,
         })
         with client.application.app_context():
             user = User.query.filter_by(username='adminuser').first()
@@ -33,7 +33,7 @@ class TestAdminUserManagement:
         token, answer = _solve_captcha(client)
         res = client.post('/api/auth/login', json={
             'username': 'adminuser', 'password': 'adminpass123',
-            'captcha_token': token, 'captcha_answer': answer,
+            'recaptcha_token': token,
         })
         access_token = res.get_json()['access_token']
         return {'Authorization': f'Bearer {access_token}'}
@@ -45,7 +45,7 @@ class TestAdminUserManagement:
         token, answer = _solve_captcha(client)
         client.post('/api/auth/register', json={
             'username': 'plainuser', 'email': 'plain@test.com', 'password': 'password123',
-            'captcha_token': token, 'captcha_answer': answer,
+            'recaptcha_token': token,
         })
 
         res = client.get('/api/admin/users', headers=admin_headers)
@@ -66,7 +66,7 @@ class TestAdminUserManagement:
         token, answer = _solve_captcha(client)
         client.post('/api/auth/register', json={
             'username': 'todeactivate', 'email': 'deact@test.com', 'password': 'password123',
-            'captcha_token': token, 'captcha_answer': answer,
+            'recaptcha_token': token,
         })
         res = client.get('/api/admin/users?search=todeactivate', headers=admin_headers)
         target = res.get_json()['users'][0]

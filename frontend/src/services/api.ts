@@ -106,31 +106,24 @@ api.interceptors.response.use(
 );
 
 // Auth
-export interface CaptchaChallenge {
-  question: string;
-  captcha_token: string;
-}
-
 export const authAPI = {
-  getCaptcha: () => api.get<CaptchaChallenge>('/auth/captcha'),
-  login: (username: string, password: string, captcha_token: string, captcha_answer: string, portal?: string) =>
-    api.post('/auth/login', { username, password, captcha_token, captcha_answer, portal }),
-  adminLogin: (username: string, password: string, captcha_token: string, captcha_answer: string) =>
-    api.post('/auth/admin-login', { username, password, captcha_token, captcha_answer }),
+  login: (username: string, password: string, recaptcha_token: string, portal?: string) =>
+    api.post('/auth/login', { username, password, recaptcha_token, portal }),
+  adminLogin: (username: string, password: string, recaptcha_token: string) =>
+    api.post('/auth/admin-login', { username, password, recaptcha_token }),
   register: (data: {
     username: string;
     email: string;
     password: string;
     full_name?: string;
-    captcha_token: string;
-    captcha_answer: string;
+    recaptcha_token: string;
   }) => api.post('/auth/register', data),
   verifyOtp: (username: string, otp_code: string) =>
     api.post('/auth/verify-otp', { username, otp_code }),
   resendOtp: (username: string) =>
     api.post('/auth/resend-otp', { username }),
-  forgotPassword: (email: string, captcha_token: string, captcha_answer: string) =>
-    api.post('/auth/forgot-password', { email, captcha_token, captcha_answer }),
+  forgotPassword: (email: string, recaptcha_token: string) =>
+    api.post('/auth/forgot-password', { email, recaptcha_token }),
   resetPassword: (email: string, otp_code: string, new_password: string) =>
     api.post('/auth/reset-password', { email, otp_code, new_password }),
   getProfile: () => api.get('/auth/profile'),
