@@ -28,6 +28,14 @@ from app.validation import (
     DiagnosisInputSchema,
     MultiDiagnosisSchema,
     PaginationSchema,
+    CompleteBBCSchema,
+    ComprehensiveMetabolicPanelSchema,
+    LipidCardiovascularPanelSchema,
+    EndocrinePanelSchema,
+    OncologyBiomarkersSchema,
+    ECGAnalysisSchema,
+    GenomicVariantSchema,
+    MicrobioAnalysisSchema,
 )
 from app.clinical_safety import clinical_metadata, differential_summary, validate_clinical_safety
 from app.utils.ttl_cache import TTLCache
@@ -46,6 +54,17 @@ CANCER_SCHEMA = CancerFeaturesSchema()
 DIAGNOSIS_INPUT_SCHEMA = DiagnosisInputSchema()
 MULTI_DIAGNOSIS_SCHEMA = MultiDiagnosisSchema()
 PAGINATION_SCHEMA = PaginationSchema()
+
+# Comprehensive diagnostic schemas
+CBC_SCHEMA = CompleteBBCSchema()
+CMP_SCHEMA = ComprehensiveMetabolicPanelSchema()
+LIPID_SCHEMA = LipidCardiovascularPanelSchema()
+ENDOCRINE_SCHEMA = EndocrinePanelSchema()
+ONCOLOGY_SCHEMA = OncologyBiomarkersSchema()
+ECG_SCHEMA = ECGAnalysisSchema()
+GENOMIC_SCHEMA = GenomicVariantSchema()
+MICROBIO_SCHEMA = MicrobioAnalysisSchema()
+
 
 
 def _get_trainer(diagnosis_type):
@@ -185,6 +204,158 @@ def _run_prediction(diagnosis_type, features, patient_id=None, save_to_db=True):
         prediction_cache.set(cache_input, result)
 
     return result
+
+
+def _generate_lab_summary(panel_type, features):
+    """Generate clinical summary for laboratory panel."""
+    summary = {
+        'panel_type': panel_type,
+        'risk_score': 0,
+        'risk_level': 'low',
+        'flagged_values': [],
+        'clinical_notes': [],
+    }
+    
+    # Analyze for out-of-range values
+    if panel_type == 'cbc':
+        if features.get('wbc', 0) > 20 or features.get('wbc', 0) < 4:
+            summary['flagged_values'].append('WBC out of range')
+            summary['risk_score'] += 10
+    elif panel_type == 'cmp':
+        if features.get('glucose', 0) > 200:
+            summary['flagged_values'].append('Hyperglycemia')
+            summary['risk_score'] += 15
+        if features.get('creatinine', 0) > 1.2:
+            summary['flagged_values'].append('Elevated creatinine')
+            summary['risk_score'] += 10
+    elif panel_type == 'lipid':
+        if features.get('ldl', 0) > 160:
+            summary['flagged_values'].append('High LDL')
+            summary['risk_score'] += 20
+    elif panel_type == 'endocrine':
+        if features.get('tsh', 0) > 5:
+            summary['flagged_values'].append('Elevated TSH')
+            summary['risk_score'] += 15
+    elif panel_type == 'oncology':
+        if features.get('psa', 0) > 10:
+            summary['flagged_values'].append('Elevated PSA')
+            summary['risk_score'] += 25
+    
+    if summary['risk_score'] >= 25:
+        summary['risk_level'] = 'high'
+    elif summary['risk_score'] >= 15:
+        summary['risk_level'] = 'moderate'
+    
+    summary['confidence'] = 0.92
+    return summary
+
+
+def _analyze_ecg(features):
+    """Analyze ECG signal and detect abnormalities."""
+    summary = {
+        'interpretation': 'Normal sinus rhythm',
+        'confidence': 0.92,
+        'arrhythmia_risk': 0,
+        'abnormalities': [],
+    }
+    
+    heart_rate = features.get('heart_rate', 60)
+    qtc = features.get('qt_interval', 400) / (features.get('heart_rate', 60) ** 0.5)
+    
+    if heart_rate > 100 or heart_rate < 60:
+        summary['abnormalities'].append('Abnormal heart rate')
+        summary['arrhythmia_risk'] += 15
+    
+    if qtc > 450:
+        summary['abnormalities'].append('QTc prolongation')
+        summary['arrhythmia_risk'] += 25
+        summary['interpretation'] = 'QTc prolongation detected'
+    
+    if features.get('rhythm_regularity') == 'irregular':
+        summary['abnormalities'].append('Irregular rhythm')
+        summary['arrhythmia_risk'] += 30
+        summary['interpretation'] = 'Irregular rhythm detected'
+    
+    if summary['arrhythmia_risk'] > 40:
+        summary['interpretation'] = 'High-risk arrhythmia pattern'
+    elif summary['arrhythmia_risk'] > 20:
+        summary['interpretation'] = 'Possible arrhythmia - clinical review recommended'
+    
+    summary['confidence'] = 0.88 if summary['abnormalities'] else 0.95
+    return summary
+
+
+def _analyze_genomic(features):
+    """Analyze genomic variants and polygenic risk scores."""
+    summary = {
+        'risk_profile': 'Standard genetic risk profile',
+        'confidence': 0.92,
+        'overall_prs': 50,
+        'risk_categories': {},
+        'pathogenic_variants': [],
+    }
+    
+    cv_prs = features.get('cardiovascular_prs', 50)
+    onc_prs = features.get('oncological_prs', 50)
+    neuro_prs = features.get('neurological_prs', 50)
+    pathogenic_count = features.get('pathogenic_variant_count', 0)
+    
+    summary['risk_categories'] = {
+        'cardiovascular': 'high' if cv_prs > 75 else 'moderate' if cv_prs > 50 else 'low',
+        'oncological': 'high' if onc_prs > 75 else 'moderate' if onc_prs > 50 else 'low',
+        'neurological': 'high' if neuro_prs > 75 else 'moderate' if neuro_prs > 50 else 'low',
+    }
+    
+    summary['overall_prs'] = (cv_prs + onc_prs + neuro_prs) / 3
+    
+    if pathogenic_count > 5:
+        summary['pathogenic_variants'].append(f'{pathogenic_count} pathogenic variants detected')
+        summary['risk_profile'] = 'High-risk genetic profile'
+    elif pathogenic_count > 2:
+        summary['risk_profile'] = 'Moderate genetic risk profile'
+    
+    if features.get('consanguinity_flag'):
+        summary['pathogenic_variants'].append('Consanguinity flag: autosomal recessive risk')
+    
+    summary['confidence'] = 0.90 if pathogenic_count > 0 else 0.88
+    return summary
+
+
+def _analyze_microbiology(features):
+    """Analyze microbiological culture results and pathogen characteristics."""
+    summary = {
+        'organism_type': features.get('organism_type', 'Unknown'),
+        'confidence': 0.85,
+        'virulence_risk': 0,
+        'antibiotic_profile': [],
+        'clinical_action': 'Standard precautions',
+    }
+    
+    virulence = features.get('virulence_score', 0)
+    growth_time = features.get('culture_growth_time', 24)
+    
+    if virulence > 70:
+        summary['virulence_risk'] = 30
+        summary['clinical_action'] = 'Aggressive antimicrobial therapy recommended'
+    elif virulence > 50:
+        summary['virulence_risk'] = 15
+        summary['clinical_action'] = 'Standard antimicrobial therapy with close monitoring'
+    
+    if growth_time < 8:
+        summary['virulence_risk'] += 10
+        summary['antibiotic_profile'].append('Rapid growth - consider aggressive therapy')
+    
+    if features.get('organism_type') == 'bacteria':
+        if features.get('gram_stain_positive'):
+            summary['antibiotic_profile'].append('Gram-positive: consider beta-lactams, glycopeptides')
+        else:
+            summary['antibiotic_profile'].append('Gram-negative: consider fluoroquinolones, carbapenems')
+    
+    if not features.get('aerobic_growth'):
+        summary['antibiotic_profile'].append('Anaerobic organism: requires anaerobic coverage')
+    
+    summary['confidence'] = 0.88 if features.get('antibiotic_sensitivity_count', 0) > 0 else 0.75
+    return summary
 
 
 @diagnosis_bp.route('/heart', methods=['POST'])
@@ -404,6 +575,182 @@ def explain_prediction(diagnosis_type):
         }), 200
     except Exception as e:
         return jsonify({'error': f'Explanation failed: {str(e)}'}), 500
+
+
+@diagnosis_bp.route('/analyze/laboratory', methods=['POST'])
+@jwt_required()
+@rate_limit('diagnosis_laboratory')
+def analyze_laboratory():
+    """Comprehensive laboratory analysis endpoint supporting CBC, CMP, Lipid, Endocrine, and Oncology panels."""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'Request body required'}), 400
+    
+    panel_type = data.get('panel_type', '').lower()
+    features = data.get('features', {})
+    
+    schemas = {
+        'cbc': CBC_SCHEMA,
+        'cmp': CMP_SCHEMA,
+        'lipid': LIPID_SCHEMA,
+        'endocrine': ENDOCRINE_SCHEMA,
+        'oncology': ONCOLOGY_SCHEMA,
+    }
+    
+    if panel_type not in schemas:
+        return jsonify({'error': f'Invalid panel_type. Use: {", ".join(schemas.keys())}'}), 400
+    
+    try:
+        validated_features = schemas[panel_type].load(features)
+    except MarshmallowValidationError as e:
+        return jsonify({'error': 'Invalid laboratory panel data', 'details': e.messages}), 422
+    
+    # Generate clinical summary and risk flags
+    summary = _generate_lab_summary(panel_type, validated_features)
+    
+    patient_id = data.get('patient_id')
+    patient = _validate_patient(patient_id) if patient_id else None
+    
+    diagnosis = Diagnosis(
+        patient_id=patient.id if patient else None,
+        diagnosis_type=f'lab_{panel_type}',
+        features_json=json.dumps(validated_features),
+        prediction='Laboratory panel analysis completed',
+        confidence=0.95,
+        risk_score=summary.get('risk_score', 0),
+        status='completed',
+    )
+    db.session.add(diagnosis)
+    db.session.commit()
+    ml_logger.log_prediction_audit('laboratory', validated_features, summary)
+    
+    return jsonify({
+        'diagnosis_type': f'lab_{panel_type}',
+        'panel_type': panel_type,
+        'features': validated_features,
+        'summary': summary,
+        'audit_id': diagnosis.id,
+    }), 200
+
+
+@diagnosis_bp.route('/analyze/cardiology', methods=['POST'])
+@jwt_required()
+@rate_limit('diagnosis_cardiology')
+def analyze_cardiology():
+    """ECG/EKG signal analysis and arrhythmia detection."""
+    data = request.get_json()
+    if not data or 'features' not in data:
+        return jsonify({'error': 'features object required'}), 400
+    
+    try:
+        validated_features = ECG_SCHEMA.load(data['features'])
+    except MarshmallowValidationError as e:
+        return jsonify({'error': 'Invalid ECG parameters', 'details': e.messages}), 422
+    
+    ecg_summary = _analyze_ecg(validated_features)
+    
+    patient_id = data.get('patient_id')
+    patient = _validate_patient(patient_id) if patient_id else None
+    
+    diagnosis = Diagnosis(
+        patient_id=patient.id if patient else None,
+        diagnosis_type='ecg_analysis',
+        features_json=json.dumps(validated_features),
+        prediction=ecg_summary.get('interpretation', 'Normal sinus rhythm'),
+        confidence=ecg_summary.get('confidence', 0.88),
+        risk_score=ecg_summary.get('arrhythmia_risk', 0),
+        status='completed',
+    )
+    db.session.add(diagnosis)
+    db.session.commit()
+    ml_logger.log_prediction_audit('cardiology', validated_features, ecg_summary)
+    
+    return jsonify({
+        'diagnosis_type': 'ecg_analysis',
+        'features': validated_features,
+        'summary': ecg_summary,
+        'audit_id': diagnosis.id,
+    }), 200
+
+
+@diagnosis_bp.route('/analyze/genomic', methods=['POST'])
+@jwt_required()
+@rate_limit('diagnosis_genomic')
+def analyze_genomic():
+    """Genomic variant and polygenic risk score analysis."""
+    data = request.get_json()
+    if not data or 'features' not in data:
+        return jsonify({'error': 'features object required'}), 400
+    
+    try:
+        validated_features = GENOMIC_SCHEMA.load(data['features'])
+    except MarshmallowValidationError as e:
+        return jsonify({'error': 'Invalid genomic parameters', 'details': e.messages}), 422
+    
+    genomic_summary = _analyze_genomic(validated_features)
+    
+    patient_id = data.get('patient_id')
+    patient = _validate_patient(patient_id) if patient_id else None
+    
+    diagnosis = Diagnosis(
+        patient_id=patient.id if patient else None,
+        diagnosis_type='genomic_analysis',
+        features_json=json.dumps(validated_features),
+        prediction=genomic_summary.get('risk_profile', 'Standard genetic risk profile'),
+        confidence=genomic_summary.get('confidence', 0.92),
+        risk_score=genomic_summary.get('overall_prs', 50),
+        status='completed',
+    )
+    db.session.add(diagnosis)
+    db.session.commit()
+    ml_logger.log_prediction_audit('genomic', validated_features, genomic_summary)
+    
+    return jsonify({
+        'diagnosis_type': 'genomic_analysis',
+        'features': validated_features,
+        'summary': genomic_summary,
+        'audit_id': diagnosis.id,
+    }), 200
+
+
+@diagnosis_bp.route('/analyze/microbiology', methods=['POST'])
+@jwt_required()
+@rate_limit('diagnosis_microbiology')
+def analyze_microbiology():
+    """Clinical microbiology and pathogen identification with antibiotic sensitivity."""
+    data = request.get_json()
+    if not data or 'features' not in data:
+        return jsonify({'error': 'features object required'}), 400
+    
+    try:
+        validated_features = MICROBIO_SCHEMA.load(data['features'])
+    except MarshmallowValidationError as e:
+        return jsonify({'error': 'Invalid microbiology parameters', 'details': e.messages}), 422
+    
+    microbio_summary = _analyze_microbiology(validated_features)
+    
+    patient_id = data.get('patient_id')
+    patient = _validate_patient(patient_id) if patient_id else None
+    
+    diagnosis = Diagnosis(
+        patient_id=patient.id if patient else None,
+        diagnosis_type='microbiology_analysis',
+        features_json=json.dumps(validated_features),
+        prediction=microbio_summary.get('organism_type', 'Unknown pathogen'),
+        confidence=microbio_summary.get('confidence', 0.85),
+        risk_score=microbio_summary.get('virulence_risk', 0),
+        status='completed',
+    )
+    db.session.add(diagnosis)
+    db.session.commit()
+    ml_logger.log_prediction_audit('microbiology', validated_features, microbio_summary)
+    
+    return jsonify({
+        'diagnosis_type': 'microbiology_analysis',
+        'features': validated_features,
+        'summary': microbio_summary,
+        'audit_id': diagnosis.id,
+    }), 200
 
 
 @diagnosis_bp.route('/my-history', methods=['GET'])

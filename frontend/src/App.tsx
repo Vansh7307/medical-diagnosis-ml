@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import AdminLogin from './pages/AdminLogin'
 import Dashboard from './pages/Dashboard'
+import OmniDiagnostics from './pages/OmniDiagnostics'
 import Patients from './pages/Patients'
 import NewDiagnosis from './pages/NewDiagnosis'
 import DiagnosisHistory from './pages/DiagnosisHistory'
@@ -44,12 +45,21 @@ export default function App() {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route index element={<Dashboard />} />
+          <Route path="cases" element={<Dashboard />} />
+          <Route path="board" element={<Dashboard />} />
+          <Route path="roadmap" element={<Dashboard />} />
+          <Route path="my-work" element={<Dashboard />} />
+          <Route path="team" element={<Dashboard />} />
+          <Route path="templates" element={<Dashboard />} />
+          <Route path="archive" element={<Dashboard />} />
           <Route path="patients" element={<Patients />} />
           <Route path="my-profile" element={<MyProfile />} />
-          <Route path="diagnosis/new" element={<NewDiagnosis />} />
+          <Route path="diagnosis/new" element={<OmniDiagnostics />} />
           <Route path="diagnosis/history/:patientId?" element={<DiagnosisHistory />} />
           <Route path="analytics" element={<Analytics />} />
+          <Route path="activity" element={<Analytics />} />
           <Route path="mlops" element={<MLOpsMonitor />} />
+          <Route path="settings" element={<Dashboard />} />
           <Route path="admin" element={<AdminRoute><AdminUsers /></AdminRoute>} />
         </Route>
       </Routes>

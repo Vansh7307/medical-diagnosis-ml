@@ -256,3 +256,96 @@ class PaginationSchema(Schema):
     page = fields.Integer(validate=validate.Range(min=1), load_default=1)
     per_page = fields.Integer(validate=validate.Range(min=1, max=100), load_default=10)
     search = fields.String(load_default='')
+
+
+class CompleteBBCSchema(Schema):
+    """Validation for Complete Blood Count (CBC) with differential."""
+    wbc = fields.Float(required=True, validate=validate.Range(min=3, max=30, error='WBC: 3-30 K/uL'))
+    rbc = fields.Float(required=True, validate=validate.Range(min=3, max=7, error='RBC: 3-7 M/uL'))
+    hemoglobin = fields.Float(required=True, validate=validate.Range(min=7, max=20, error='Hb: 7-20 g/dL'))
+    hematocrit = fields.Float(required=True, validate=validate.Range(min=20, max=60, error='Hct: 20-60%'))
+    platelets = fields.Float(required=True, validate=validate.Range(min=50, max=500, error='Platelets: 50-500 K/uL'))
+    neutrophils = fields.Float(required=True, validate=validate.Range(min=40, max=80, error='Neutrophils: 40-80%'))
+    lymphocytes = fields.Float(required=True, validate=validate.Range(min=15, max=45, error='Lymphocytes: 15-45%'))
+
+
+class ComprehensiveMetabolicPanelSchema(Schema):
+    """Validation for Comprehensive Metabolic Panel (CMP)."""
+    glucose = fields.Float(required=True, validate=validate.Range(min=40, max=300, error='Glucose: 40-300 mg/dL'))
+    calcium = fields.Float(required=True, validate=validate.Range(min=6, max=11, error='Calcium: 6-11 mg/dL'))
+    sodium = fields.Float(required=True, validate=validate.Range(min=130, max=150, error='Sodium: 130-150 mEq/L'))
+    potassium = fields.Float(required=True, validate=validate.Range(min=3, max=6, error='Potassium: 3-6 mEq/L'))
+    co2 = fields.Float(required=True, validate=validate.Range(min=20, max=32, error='CO2: 20-32 mEq/L'))
+    chloride = fields.Float(required=True, validate=validate.Range(min=95, max=110, error='Chloride: 95-110 mEq/L'))
+    bun = fields.Float(required=True, validate=validate.Range(min=7, max=30, error='BUN: 7-30 mg/dL'))
+    creatinine = fields.Float(required=True, validate=validate.Range(min=0.6, max=1.3, error='Creatinine: 0.6-1.3 mg/dL'))
+    bilirubin = fields.Float(required=True, validate=validate.Range(min=0.1, max=1.3, error='Bilirubin: 0.1-1.3 mg/dL'))
+    ast = fields.Float(required=True, validate=validate.Range(min=10, max=40, error='AST: 10-40 U/L'))
+    alt = fields.Float(required=True, validate=validate.Range(min=7, max=56, error='ALT: 7-56 U/L'))
+    alp = fields.Float(required=True, validate=validate.Range(min=44, max=147, error='ALP: 44-147 U/L'))
+
+
+class LipidCardiovascularPanelSchema(Schema):
+    """Validation for Lipid and Cardiovascular Risk Panel."""
+    total_cholesterol = fields.Float(required=True, validate=validate.Range(min=100, max=400, error='Total Cholesterol: 100-400 mg/dL'))
+    hdl = fields.Float(required=True, validate=validate.Range(min=20, max=100, error='HDL: 20-100 mg/dL'))
+    ldl = fields.Float(required=True, validate=validate.Range(min=0, max=300, error='LDL: 0-300 mg/dL'))
+    triglycerides = fields.Float(required=True, validate=validate.Range(min=30, max=500, error='Triglycerides: 30-500 mg/dL'))
+    apob = fields.Float(required=True, validate=validate.Range(min=30, max=150, error='ApoB: 30-150 mg/dL'))
+    hs_crp = fields.Float(required=True, validate=validate.Range(min=0, max=20, error='hs-CRP: 0-20 mg/L'))
+    troponin_i = fields.Float(required=True, validate=validate.Range(min=0, max=5, error='Troponin-I: 0-5 ng/mL'))
+    troponin_t = fields.Float(required=True, validate=validate.Range(min=0, max=5, error='Troponin-T: 0-5 ng/mL'))
+    nt_probnp = fields.Float(required=True, validate=validate.Range(min=0, max=10000, error='NT-proBNP: 0-10000 pg/mL'))
+
+
+class EndocrinePanelSchema(Schema):
+    """Validation for Endocrine and Hormone Panel."""
+    tsh = fields.Float(required=True, validate=validate.Range(min=0.1, max=10, error='TSH: 0.1-10 mIU/L'))
+    free_t3 = fields.Float(required=True, validate=validate.Range(min=1.5, max=4.5, error='Free T3: 1.5-4.5 pg/mL'))
+    free_t4 = fields.Float(required=True, validate=validate.Range(min=0.8, max=2, error='Free T4: 0.8-2 ng/dL'))
+    hba1c = fields.Float(required=True, validate=validate.Range(min=4, max=15, error='HbA1c: 4-15%'))
+    fasting_insulin = fields.Float(required=True, validate=validate.Range(min=2, max=20, error='Fasting Insulin: 2-20 uIU/mL'))
+    cortisol = fields.Float(required=True, validate=validate.Range(min=3, max=25, error='Cortisol: 3-25 ug/dL'))
+    testosterone = fields.Float(required=True, validate=validate.Range(min=0, max=1000, error='Testosterone: 0-1000 ng/dL'))
+    estrogen = fields.Float(required=True, validate=validate.Range(min=0, max=500, error='Estrogen: 0-500 pg/mL'))
+    vitamin_d = fields.Float(required=True, validate=validate.Range(min=10, max=100, error='Vitamin D: 10-100 ng/mL'))
+
+
+class OncologyBiomarkersSchema(Schema):
+    """Validation for Tumor Biomarkers and Oncology Panel."""
+    psa = fields.Float(required=True, validate=validate.Range(min=0, max=100, error='PSA: 0-100 ng/mL'))
+    cea = fields.Float(required=True, validate=validate.Range(min=0, max=20, error='CEA: 0-20 ng/mL'))
+    ca125 = fields.Float(required=True, validate=validate.Range(min=0, max=200, error='CA-125: 0-200 U/mL'))
+    ca199 = fields.Float(required=True, validate=validate.Range(min=0, max=200, error='CA 19-9: 0-200 U/mL'))
+    afp = fields.Float(required=True, validate=validate.Range(min=0, max=500, error='AFP: 0-500 ng/mL'))
+
+
+class ECGAnalysisSchema(Schema):
+    """Validation for 12-Lead ECG/EKG Signal Analysis."""
+    heart_rate = fields.Float(required=True, validate=validate.Range(min=30, max=200, error='HR: 30-200 bpm'))
+    pr_interval = fields.Float(required=True, validate=validate.Range(min=120, max=200, error='PR: 120-200 ms'))
+    qrs_duration = fields.Float(required=True, validate=validate.Range(min=80, max=120, error='QRS: 80-120 ms'))
+    qt_interval = fields.Float(required=True, validate=validate.Range(min=200, max=450, error='QT: 200-450 ms'))
+    st_segment = fields.Float(required=True, validate=validate.Range(min=-2, max=2, error='ST: -2 to +2 mm'))
+    t_wave_amplitude = fields.Float(required=True, validate=validate.Range(min=-10, max=10, error='T-wave: -10 to +10 mm'))
+    rhythm_regularity = fields.String(required=True, validate=validate.OneOf(['regular', 'irregular']))
+
+
+class GenomicVariantSchema(Schema):
+    """Validation for Genomic Variant and Polygenic Risk Assessment."""
+    snp_count = fields.Integer(required=True, validate=validate.Range(min=0, max=100000, error='SNP count: 0-100000'))
+    cardiovascular_prs = fields.Float(required=True, validate=validate.Range(min=0, max=100, error='CV PRS: 0-100 percentile'))
+    oncological_prs = fields.Float(required=True, validate=validate.Range(min=0, max=100, error='Oncology PRS: 0-100 percentile'))
+    neurological_prs = fields.Float(required=True, validate=validate.Range(min=0, max=100, error='Neuro PRS: 0-100 percentile'))
+    consanguinity_flag = fields.Boolean(required=True)
+    pathogenic_variant_count = fields.Integer(required=True, validate=validate.Range(min=0, max=50, error='Pathogenic variants: 0-50'))
+
+
+class MicrobioAnalysisSchema(Schema):
+    """Validation for Clinical Microbiology and Pathogen Identification."""
+    organism_type = fields.String(required=True, validate=validate.OneOf(['bacteria', 'virus', 'fungus', 'parasite', 'unknown']))
+    culture_growth_time = fields.Float(required=True, validate=validate.Range(min=0.5, max=72, error='Growth time: 0.5-72 hours'))
+    antibiotic_sensitivity_count = fields.Integer(required=True, validate=validate.Range(min=0, max=30, error='Antibiotic panels: 0-30'))
+    gram_stain_positive = fields.Boolean(required=True)
+    aerobic_growth = fields.Boolean(required=True)
+    virulence_score = fields.Float(required=True, validate=validate.Range(min=0, max=100, error='Virulence: 0-100%'))
