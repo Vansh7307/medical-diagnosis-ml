@@ -4,6 +4,8 @@ Handles ML model predictions for heart, diabetes, cancer, multi-diagnosis,
 and SHAP-based model explainability.
 Includes input validation, rate limiting, and structured audit logging.
 """
+import csv
+import io
 import json
 import os
 from flask import Blueprint, request, jsonify
@@ -78,6 +80,50 @@ def _validate_features(diagnosis_type, features):
         # Use the schema to validate (load normalizes + validates)
         schema.load(features)
     return True
+
+
+def _parse_lab_csv(file_storage):
+    """Read one structured lab row and match it to a supported ML model.
+
+    The endpoint intentionally accepts a single data row. Batch scoring needs
+    explicit consent, result ownership, and an audit model; silently scoring a
+    whole upload would be inappropriate for this clinical workflow.
+    """
+    raw = file_storage.stream.read(512 * 1024 + 1)
+    if len(raw) > 512 * 1024:
+        raise ValueError('CSV must be 512KB or smaller')
+    try:
+        text = raw.decode('utf-8-sig')
+    except UnicodeDecodeError as exc:
+        raise ValueError('CSV must be UTF-8 encoded') from exc
+
+    reader = csv.DictReader(io.StringIO(text))
+    if not reader.fieldnames:
+        raise ValueError('CSV must include a header row')
+    rows = list(reader)
+    if len(rows) != 1:
+        raise ValueError('CSV must contain exactly one lab-result row')
+
+    row = {str(key).strip(): (value or '').strip() for key, value in rows[0].items() if key}
+    for diagnosis_type, details in MODEL_INFO.items():
+        required_features = details['features']
+        if not set(required_features).issubset(row):
+            continue
+        features = {}
+        for name in required_features:
+            try:
+                number = float(row[name])
+            except ValueError as exc:
+                raise ValueError(f'"{name}" must contain a numeric value') from exc
+            features[name] = int(number) if number.is_integer() else number
+        _validate_features(diagnosis_type, features)
+        return diagnosis_type, features
+
+    supported = ', '.join(MODEL_INFO)
+    raise ValueError(
+        f'CSV headers do not match a supported model ({supported}). '
+        'Use the exact feature names exported by the diagnostic form.'
+    )
 
 
 def _run_prediction(diagnosis_type, features, patient_id=None, save_to_db=True):
@@ -499,3 +545,41 @@ def analyze_image():
         return jsonify({'error': str(e)}), 503
     except Exception:
         return jsonify({'error': 'Unable to analyze this image right now. Please try again.'}), 500
+
+
+@diagnosis_bp.route('/analyze-labs', methods=['POST'])
+@role_required('doctor', 'clinician', 'admin')
+@rate_limit('diagnosis_analyze_labs')
+def analyze_labs():
+    """Parse one CSV lab record and run the matching validated ML pipeline."""
+    if 'file' not in request.files:
+        return jsonify({'error': 'No CSV file provided (expected field name "file")'}), 400
+
+    file = request.files['file']
+    if not file or not file.filename:
+        return jsonify({'error': 'No CSV file selected'}), 400
+    if not file.filename.lower().endswith('.csv'):
+        return jsonify({'error': 'Only .csv files are supported'}), 400
+
+    try:
+        diagnosis_type, features = _parse_lab_csv(file)
+        patient_id = request.form.get('patient_id', '').strip()
+        if patient_id:
+            patient = _validate_patient(patient_id)
+            if not patient:
+                return jsonify({'error': f'Patient with id {patient_id} not found'}), 404
+            patient_id = patient.id
+        result = _run_prediction(diagnosis_type, features, patient_id)
+        return jsonify({
+            'diagnosis_type': diagnosis_type,
+            'features_used': list(features),
+            'result': result,
+        }), 200
+    except MarshmallowValidationError as exc:
+        return jsonify({'error': 'CSV values failed clinical validation', 'details': exc.messages}), 422
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 422
+    except FileNotFoundError as exc:
+        return jsonify({'error': str(exc)}), 503
+    except Exception:
+        return jsonify({'error': 'Unable to analyze this lab file right now. Please try again.'}), 500

@@ -96,6 +96,9 @@ def init_rate_limiter(app):
             'diagnosis_diabetes': 30,
             'diagnosis_cancer': 30,
             'diagnosis_multi': 10,
+            'diagnosis_analyze_labs': 15,
+            'diagnosis_analyze_notes': 20,
+            'diagnosis_analyze_image': 10,
             'auth_register': 5,
             'auth_login': 20,
         })

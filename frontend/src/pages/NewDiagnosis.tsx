@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { diagnosisAPI } from '../services/api'
 import { RadialBarChart, RadialBar, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Cell, Tooltip, ReferenceLine } from 'recharts'
 import { MiniGauge } from '../components/MetricCard'
@@ -148,12 +148,13 @@ function StaffDiagnosisForm() {
     }
   }
 
-  // Initialize defaults on mount
-  useState(() => {
+  // Initialize defaults once on mount. This must be an effect: calling a
+  // setter from a useState initializer causes an avoidable render update.
+  useEffect(() => {
     const defaults: Record<string, number> = {}
     FORM_FIELDS.heart.forEach(f => { defaults[f.name] = f.default })
     setFeatures(defaults)
-  })
+  }, [])
 
   const fields = FORM_FIELDS[selectedType]
   const riskScore = result ? (result.risk_score as number) : 0
@@ -163,6 +164,7 @@ function StaffDiagnosisForm() {
     <div className="p-4 md:p-8">
       <h2 className="text-2xl font-bold text-slate-900 mb-6">New Diagnosis</h2>
 
+      <LabResultsPanel />
       <ClinicalNotesPanel />
       <LesionImagePanel />
 
@@ -348,6 +350,87 @@ function ExplanationChart({ explanation }: { explanation: Record<string, unknown
         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500 inline-block" /> Decreases risk</span>
       </div>
     </div>
+  )
+}
+
+function LabResultsPanel() {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [file, setFile] = useState<File | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const [result, setResult] = useState<Record<string, unknown> | null>(null)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const selectFile = (candidate?: File) => {
+    if (!candidate) return
+    if (!candidate.name.toLowerCase().endsWith('.csv')) {
+      setError('Upload a CSV file with one header row and one result row.')
+      return
+    }
+    setFile(candidate)
+    setResult(null)
+    setError('')
+  }
+
+  const analyze = async () => {
+    if (!file) return
+    setLoading(true)
+    setError('')
+    try {
+      const response = await diagnosisAPI.analyzeLabs(file)
+      setResult(response.data)
+    } catch (err) {
+      const response = err as { response?: { data?: { error?: string } } }
+      setError(response.response?.data?.error || 'Unable to analyze this lab file right now.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const inference = result?.result as Record<string, unknown> | undefined
+
+  return (
+    <section className="bg-white rounded-xl shadow-sm border p-5 mb-6">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h3 className="text-base font-semibold text-slate-900">Lab Results Console</h3>
+            <span className="text-[10px] font-medium bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-full border border-cyan-200">CSV · LIVE INFERENCE</span>
+          </div>
+          <p className="text-xs text-slate-500 mt-1">Drop one structured result row; headers are matched to a validated heart, diabetes, or cancer model.</p>
+        </div>
+        <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">Validated before scoring</span>
+      </div>
+
+      <input ref={inputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => selectFile(event.target.files?.[0])} />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(event) => { event.preventDefault(); setDragging(true) }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(event) => { event.preventDefault(); setDragging(false); selectFile(event.dataTransfer.files[0]) }}
+        className={`w-full border border-dashed rounded-xl px-4 py-5 text-center transition-all ${dragging ? 'border-cyan-400 bg-cyan-50' : 'border-slate-300 hover:border-cyan-400 hover:bg-slate-50'}`}
+      >
+        <span className="block text-sm font-medium text-slate-700">{file ? file.name : 'Drop CSV lab results here, or browse'}</span>
+        <span className="block text-xs text-slate-500 mt-1">UTF-8 · one row · 512 KB max</span>
+      </button>
+
+      <div className="flex items-center gap-3 mt-3">
+        <button type="button" onClick={analyze} disabled={!file || loading} className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 disabled:opacity-50">
+          {loading ? 'Analyzing labs…' : 'Run Lab Analysis'}
+        </button>
+        {file && <button type="button" onClick={() => { setFile(null); setResult(null); setError(''); if (inputRef.current) inputRef.current.value = '' }} className="text-sm text-slate-500 hover:text-slate-800">Clear</button>}
+      </div>
+
+      {error && <p className="mt-3 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
+      {inference && (
+        <div className="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
+          <div className="bg-slate-50 rounded-lg border border-slate-200 p-3"><p className="text-xs text-slate-500">Model</p><p className="font-semibold capitalize text-slate-900">{result?.diagnosis_type as string}</p></div>
+          <div className="bg-slate-50 rounded-lg border border-slate-200 p-3"><p className="text-xs text-slate-500">Diagnostic confidence</p><p className="font-semibold text-slate-900">{((inference.confidence as number) * 100).toFixed(1)}%</p></div>
+          <div className="bg-slate-50 rounded-lg border border-slate-200 p-3"><p className="text-xs text-slate-500">Clinical result</p><p className="font-semibold text-slate-900">{inference.prediction_label as string}</p></div>
+        </div>
+      )}
+    </section>
   )
 }
 

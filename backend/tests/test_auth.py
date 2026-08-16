@@ -149,6 +149,12 @@ class TestLogin:
         assert 'access_token' in data
         assert data['user']['username'] == 'loginuser'
 
+    def test_login_with_email(self, client):
+        _register(client, username='emailuser', email='email-login@test.com')
+        res = _login(client, 'email-login@test.com', 'password123')
+        assert res.status_code == 200
+        assert res.get_json()['user']['username'] == 'emailuser'
+
     def test_login_wrong_password(self, client):
         _register(client, username='wrongpw', email='wrongpw@test.com')
         res = _login(client, 'wrongpw', 'wrongpassword')

@@ -98,6 +98,12 @@ export default function Dashboard() {
         </span>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 mb-6 text-xs">
+        <span className="rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1.5 font-medium text-emerald-300">🟢 100% Uptime | Render Cloud</span>
+        <a href="https://medical-diagnosis-ml.vercel.app" target="_blank" rel="noreferrer" className="rounded-full border border-slate-600 px-3 py-1.5 text-slate-300 hover:border-teal-400 hover:text-teal-300">Live Demo ↗</a>
+        <a href="https://github.com/Vansh7307/medical-diagnosis-ml" target="_blank" rel="noreferrer" className="rounded-full border border-slate-600 px-3 py-1.5 text-slate-300 hover:border-teal-400 hover:text-teal-300">GitHub Repo ↗</a>
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <MetricCard label="Total Patients" value={data.total_patients as number} accent="#0d9488" />

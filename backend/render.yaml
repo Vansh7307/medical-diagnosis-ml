@@ -12,7 +12,7 @@ services:
     # get multiple times their intended rate limit. Don't raise this without
     # first moving that shared state to Redis or similar.
     startCommand: gunicorn -w 1 -b 0.0.0.0:$PORT --timeout 120 run:app
-    healthCheckPath: /api/health
+    healthCheckPath: /api/health-check
     envVars:
       - key: FLASK_ENV
         value: production

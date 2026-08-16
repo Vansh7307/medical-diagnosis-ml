@@ -60,6 +60,14 @@ def get_openapi_spec(app):
                     }
                 }
             },
+            "/health-check": {
+                "get": {
+                    "tags": ["System"],
+                    "summary": "Keep-alive health check",
+                    "description": "Alias for /health used by uptime monitors.",
+                    "responses": {"200": {"description": "API is healthy"}}
+                }
+            },
             "/auth/register": {
                 "post": {
                     "tags": ["Authentication"],
@@ -351,6 +359,18 @@ def get_openapi_spec(app):
                     "security": [{"bearerAuth": []}],
                     "responses": {
                         "200": {"description": "Model details for all diagnosis types"}
+                    }
+                }
+            },
+            "/diagnosis/analyze-labs": {
+                "post": {
+                    "tags": ["Diagnosis"],
+                    "summary": "Parse a CSV lab result and run the matching ML model",
+                    "description": "Accepts one UTF-8 CSV data row whose headers exactly match a supported model.",
+                    "security": [{"bearerAuth": []}],
+                    "responses": {
+                        "200": {"description": "Validated inference result"},
+                        "422": {"description": "Unsupported CSV or invalid clinical values"}
                     }
                 }
             },

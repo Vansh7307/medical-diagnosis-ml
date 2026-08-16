@@ -267,7 +267,12 @@ def admin_login():
     username = validated['username']
     password = validated['password']
 
-    user = User.query.filter_by(username=username).first()
+    # The client deliberately permits either a username or an email in this
+    # field. Resolve both server-side; otherwise the UI promise is misleading
+    # and password managers that fill an email cannot sign a user in.
+    user = User.query.filter(
+        (User.username == username) | (User.email == username)
+    ).first()
 
     if not user or not user.check_password(password):
         _log_login_attempt(username, success=False, reason='invalid_credentials',
@@ -330,7 +335,9 @@ def login():
     username = validated['username']
     password = validated['password']
 
-    user = User.query.filter_by(username=username).first()
+    user = User.query.filter(
+        (User.username == username) | (User.email == username)
+    ).first()
 
     if not user or not user.check_password(password):
         _log_login_attempt(username, success=False, reason='invalid_credentials',

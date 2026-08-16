@@ -1,4 +1,5 @@
 import os
+import time
 from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
@@ -8,6 +9,7 @@ from app.config import config_map
 
 db = SQLAlchemy()
 jwt = JWTManager()
+_PROCESS_STARTED_AT = time.monotonic()
 
 
 def create_app(config_name=None):
@@ -28,6 +30,13 @@ def create_app(config_name=None):
     cors_origins = app.config.get('CORS_ORIGINS', '')
     origins = [o.strip() for o in cors_origins.split(',') if o.strip()]
     CORS(app, origins=origins, supports_credentials=True)
+
+    # Keep observability and throttling in the production request path. Tests
+    # intentionally omit them so fixtures can exercise endpoints repeatedly.
+    if not app.config.get('TESTING'):
+        from app.middleware import RequestLogger, init_rate_limiter
+        init_rate_limiter(app)
+        RequestLogger(app)
 
     from app.utils.email import init_mail
     init_mail(app)
@@ -52,6 +61,7 @@ def create_app(config_name=None):
         return jsonify(get_openapi_spec(app))
 
     @app.route('/api/health')
+    @app.route('/api/health-check')
     def health_check():
         # Deliberately does NOT touch the database. Render's app server and
         # Neon's database compute have separate sleep timers with very
@@ -68,6 +78,7 @@ def create_app(config_name=None):
             'status': 'healthy',
             'service': app.config.get('API_TITLE'),
             'version': app.config.get('API_VERSION'),
+            'uptime_seconds': round(time.monotonic() - _PROCESS_STARTED_AT, 3),
         }, 200
 
     # Make sure every model is imported before create_all() so its table gets created.

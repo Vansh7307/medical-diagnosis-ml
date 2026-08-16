@@ -2,6 +2,7 @@
 Tests for diagnosis prediction endpoints.
 """
 import pytest
+from io import BytesIO
 
 
 class TestHeartDiagnosis:
@@ -112,3 +113,19 @@ class TestModelInfo:
         assert 'heart' in models
         assert 'diabetes' in models
         assert 'cancer' in models
+
+
+class TestLabCsvDiagnosis:
+    def test_diabetes_csv_prediction(self, client, auth_headers, diabetes_features):
+        headers = ','.join(diabetes_features)
+        values = ','.join(str(value) for value in diabetes_features.values())
+        res = client.post(
+            '/api/diagnosis/analyze-labs',
+            data={'file': (BytesIO(f'{headers}\n{values}\n'.encode()), 'labs.csv')},
+            headers=auth_headers,
+            content_type='multipart/form-data',
+        )
+        assert res.status_code == 200
+        data = res.get_json()
+        assert data['diagnosis_type'] == 'diabetes'
+        assert 0 <= data['result']['confidence'] <= 1

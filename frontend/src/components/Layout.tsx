@@ -86,7 +86,7 @@ export default function Layout() {
   )
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden">
+    <div className="app-shell flex h-screen overflow-hidden">
       {/* Desktop sidebar -- always visible, static width */}
       <aside className="hidden lg:flex w-64 bg-[#0b1220] text-white flex-col shrink-0">
         {sidebarContent}

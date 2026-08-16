@@ -179,6 +179,14 @@ export const diagnosisAPI = {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
+  analyzeLabs: (file: File, patientId?: string) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    if (patientId) formData.append('patient_id', patientId)
+    return api.post('/diagnosis/analyze-labs', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
   models: () => api.get('/diagnosis/models'),
 };
 

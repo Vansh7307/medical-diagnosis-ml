@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authAPI } from '../services/api'
 import Recaptcha, { type RecaptchaHandle } from '../components/Recaptcha'
+import AuthModal from '../components/AuthModal'
 
 type Mode = 'login' | 'register' | 'verify-otp' | 'forgot-password' | 'reset-password'
 type UserTab = 'doctor' | 'clinician' | 'patient-existing' | 'patient-new'
@@ -51,6 +52,17 @@ export default function Login({ lockedRole }: LoginProps) {
   const resetRecaptcha = () => {
     setCaptchaToken('')
     recaptchaRef.current?.reset()
+  }
+
+  const handleOAuth = (provider: 'Google' | 'Apple') => {
+    const url = provider === 'Google'
+      ? import.meta.env.VITE_GOOGLE_OAUTH_URL
+      : import.meta.env.VITE_APPLE_OAUTH_URL
+    if (url) {
+      window.location.assign(url)
+      return
+    }
+    setNotice(`${provider} sign-in is not configured for this deployment. Use your secure MedDiagnose account instead.`)
   }
 
   useEffect(() => {
@@ -207,19 +219,19 @@ export default function Login({ lockedRole }: LoginProps) {
   const showTabs = !lockedRole && (mode === 'login' || mode === 'register')
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-[#08090c] text-slate-100">
       {/* Left panel -- illustration + greeting */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-teal-50 via-emerald-50 to-white">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-[#08171a] via-[#0d1117] to-[#08090c]">
         <div className="absolute -top-16 -left-16 w-72 h-72 rounded-full bg-teal-100/70" />
         <div className="absolute bottom-0 left-0 w-full h-2/3 bg-gradient-to-t from-emerald-100/80 to-transparent" />
         <div className="absolute top-10 right-10 w-6 h-6 rounded-full border-4 border-amber-200" />
         <div className="absolute bottom-24 right-16 w-4 h-4 rounded-full border-4 border-teal-200" />
 
         <div className="relative z-10 flex flex-col justify-center px-16">
-          <h1 className="text-5xl font-extrabold text-slate-800 mb-3">
+          <h1 className="text-5xl font-extrabold text-white mb-3">
             Hello<span className="text-teal-500">!</span>
           </h1>
-          <p className="text-slate-500 text-lg max-w-xs">
+          <p className="text-slate-300 text-lg max-w-xs">
             Please enter your details to continue to MedDiagnose AI.
           </p>
         </div>
@@ -257,11 +269,11 @@ export default function Login({ lockedRole }: LoginProps) {
       </div>
 
       {/* Right panel -- form */}
-      <div className="flex-1 flex flex-col justify-center items-center px-6 py-10">
-        <div className="w-full max-w-sm">
+      <div className="flex-1 flex flex-col justify-center items-center px-6 py-10 bg-[radial-gradient(circle_at_top_right,rgba(20,184,166,.16),transparent_38%)]">
+        <AuthModal>
           <div className="mb-8">
-            <p className="text-sm font-semibold text-teal-600 tracking-wide uppercase mb-1">MedDiagnose</p>
-            <h2 className="text-2xl font-bold text-slate-900">
+            <p className="text-sm font-semibold text-teal-300 tracking-wide uppercase mb-1">MedDiagnose · secure access</p>
+            <h2 className="text-2xl font-bold text-white">
               {mode === 'register' ? 'Create your account' : mode === 'forgot-password' ? 'Reset your password' : mode === 'reset-password' ? 'Choose a new password' : mode === 'verify-otp' ? 'Verify your email' : 'Sign in'}
             </h2>
           </div>
@@ -291,6 +303,14 @@ export default function Login({ lockedRole }: LoginProps) {
           {notice && !error && (
             <div className="bg-teal-50 border border-teal-200 text-teal-800 px-4 py-2.5 rounded-lg mb-4 text-sm">
               {notice}
+            </div>
+          )}
+
+          {(mode === 'login' || mode === 'register') && (
+            <div className="space-y-2 mb-5">
+              <button type="button" onClick={() => handleOAuth('Google')} className="w-full rounded-lg border border-slate-700 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition hover:border-teal-400 hover:bg-white/10">Continue with Google</button>
+              <button type="button" onClick={() => handleOAuth('Apple')} className="w-full rounded-lg border border-slate-700 bg-white/5 px-4 py-2.5 text-sm font-medium text-white transition hover:border-teal-400 hover:bg-white/10">Continue with Apple</button>
+              <div className="flex items-center gap-3 py-1 text-xs text-slate-500"><span className="h-px flex-1 bg-slate-700" />or continue with credentials<span className="h-px flex-1 bg-slate-700" /></div>
             </div>
           )}
 
@@ -568,7 +588,7 @@ export default function Login({ lockedRole }: LoginProps) {
               )}
             </div>
           )}
-        </div>
+        </AuthModal>
       </div>
     </div>
   )

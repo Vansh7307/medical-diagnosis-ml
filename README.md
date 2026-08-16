@@ -98,8 +98,8 @@ Currently deployed as:
 ### Free-tier cold starts
 
 Render's free tier spins the backend down after ~15 minutes idle, and Neon's free tier suspends its database compute independently. Both are mitigated by:
-- A `/api/health` check that also pings the database (keeps both warm)
-- An external uptime monitor (e.g. [cron-job.org](https://cron-job.org)) hitting `/api/health` every ~10 minutes
+- A database-free `/api/health-check` check that returns service status and process uptime
+- The included GitHub Actions schedule (`.github/workflows/keep_alive.yml`) pings that endpoint every 10 minutes
 - A frontend banner (`ColdStartBanner`) that shows "waking up the server" if a request takes more than a couple of seconds
 
 ## Running Tests

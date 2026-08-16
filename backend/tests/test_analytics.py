@@ -15,6 +15,13 @@ class TestHealthCheck:
         assert data['service'] == 'Medical Diagnosis ML API'
         assert data['version'] == '1.0.0'
 
+    def test_keep_alive_health_check(self, client):
+        res = client.get('/api/health-check')
+        assert res.status_code == 200
+        data = res.get_json()
+        assert data['status'] == 'healthy'
+        assert isinstance(data['uptime_seconds'], (int, float))
+
 
 class TestAnalytics:
     """Test analytics endpoints."""
