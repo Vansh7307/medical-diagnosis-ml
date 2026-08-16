@@ -230,7 +230,10 @@ function StaffDiagnosisForm() {
 
           {result && (
             <div className="bg-white rounded-xl shadow-sm border p-6">
-              <h3 className="text-lg font-semibold text-slate-900 mb-4">Diagnosis Result</h3>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h3 className="text-lg font-semibold text-slate-900">Clinical Decision Support</h3>
+                <button type="button" onClick={() => window.print()} className="print:hidden text-xs rounded-lg border border-teal-500/50 px-2.5 py-1.5 text-teal-300 hover:bg-teal-500/10">Export / Print</button>
+              </div>
 
               {/* Risk Gauge */}
               <div className="text-center mb-4">
@@ -255,6 +258,17 @@ function StaffDiagnosisForm() {
                   <span className="text-slate-600">Model Version</span>
                   <span className="font-mono text-xs">{result.model_version as string}</span>
                 </div>
+              </div>
+              <div className="mt-4 border-t border-slate-700/50 pt-4">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Ranked model signals</p>
+                <div className="space-y-2">
+                  {((result.differential_summary as Array<{ label: string; confidence: number }>) || []).map((item, index) => (
+                    <div key={item.label} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-xs">
+                      <span className="text-slate-600">{index + 1}. {item.label}</span><strong className="text-slate-900">{item.confidence.toFixed(1)}%</strong>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-3 text-[11px] leading-relaxed text-slate-500">{(result.clinical_metadata as { disclaimer?: string })?.disclaimer || 'Decision support only. Clinical review is required.'}</p>
               </div>
             </div>
           )}
@@ -288,8 +302,42 @@ function StaffDiagnosisForm() {
           )}
         </div>
       </div>
+      <SensitivityExplorer diagnosisType={selectedType} fields={fields} features={features} onScenario={setResult} />
     </div>
   )
+}
+
+function SensitivityExplorer({ diagnosisType, fields, features, onScenario }: { diagnosisType: DiagnosisType; fields: typeof FORM_FIELDS.heart; features: Record<string, number>; onScenario: (result: Record<string, unknown>) => void }) {
+  const [featureName, setFeatureName] = useState(fields[0].name)
+  const [value, setValue] = useState(features[fields[0].name] ?? fields[0].default)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const active = fields.find(field => field.name === featureName) || fields[0]
+
+  useEffect(() => {
+    setFeatureName(fields[0].name)
+    setValue(features[fields[0].name] ?? fields[0].default)
+  }, [diagnosisType])
+
+  const runScenario = async () => {
+    const scenario = { ...features, [featureName]: value }
+    setLoading(true); setError('')
+    try {
+      const response = diagnosisType === 'heart' ? await diagnosisAPI.heart(scenario) : diagnosisType === 'diabetes' ? await diagnosisAPI.diabetes(scenario) : await diagnosisAPI.cancer(scenario)
+      onScenario(response.data.result)
+    } catch (err) {
+      setError((err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Scenario could not be scored.')
+    } finally { setLoading(false) }
+  }
+
+  return <section className="mt-6 bg-white rounded-xl shadow-sm border p-5 print:hidden">
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-semibold text-slate-900">Biomarker Sensitivity Explorer</h3><p className="text-xs text-slate-500 mt-1">Adjust one input and re-score the model without saving a patient record.</p></div><span className="text-xs text-cyan-300">Scenario simulation</span></div>
+    <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+      <select value={featureName} onChange={event => { const next = fields.find(field => field.name === event.target.value) || fields[0]; setFeatureName(next.name); setValue(features[next.name] ?? next.default) }} className="rounded-lg border px-3 py-2 text-sm">{fields.map(field => <option key={field.name} value={field.name}>{field.label}</option>)}</select>
+      <input aria-label={active.label} type="number" min={active.min} max={active.max} step={active.step} value={value} onChange={event => setValue(Number(event.target.value))} className="rounded-lg border px-3 py-2 text-sm" />
+      <button type="button" onClick={runScenario} disabled={loading} className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-700 disabled:opacity-50">{loading ? 'Scoring…' : 'Test scenario'}</button>
+    </div>{error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+  </section>
 }
 
 /** Renders real SHAP feature-contribution values as a signed horizontal bar

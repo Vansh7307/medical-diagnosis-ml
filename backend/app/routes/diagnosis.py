@@ -29,12 +29,15 @@ from app.validation import (
     MultiDiagnosisSchema,
     PaginationSchema,
 )
+from app.clinical_safety import clinical_metadata, differential_summary, validate_clinical_safety
+from app.utils.ttl_cache import TTLCache
 
 diagnosis_bp = Blueprint('diagnosis', __name__)
 
 # Cache trained models
 _model_cache = {}
 ml_logger = MLLogger()
+prediction_cache = TTLCache(ttl_seconds=60, max_items=256)
 
 # Validation schemas
 HEART_SCHEMA = HeartDiseaseFeaturesSchema()
@@ -75,6 +78,7 @@ def _validate_features(diagnosis_type, features):
         'diabetes': DIABETES_SCHEMA,
         'cancer': CANCER_SCHEMA,
     }
+    validate_clinical_safety(diagnosis_type, features)
     schema = schemas.get(diagnosis_type)
     if schema:
         # Use the schema to validate (load normalizes + validates)
@@ -134,8 +138,17 @@ def _run_prediction(diagnosis_type, features, patient_id=None, save_to_db=True):
                     to avoid duplicate records (the multi endpoint
                     creates a single summary record instead).
     """
+    cache_input = {'diagnosis_type': diagnosis_type, 'features': features}
+    cached = prediction_cache.get(cache_input) if not patient_id else None
+    if cached:
+        cached['cache_hit'] = True
+        return cached
+
     trainer = _get_trainer(diagnosis_type)
     result = trainer.predict(features)
+    result['differential_summary'] = differential_summary(diagnosis_type, result)
+    result['clinical_metadata'] = clinical_metadata(result)
+    result['cache_hit'] = False
 
     # Log prediction
     ml_logger.log_prediction(
@@ -167,6 +180,9 @@ def _run_prediction(diagnosis_type, features, patient_id=None, save_to_db=True):
         db.session.add(diagnosis)
         db.session.commit()
         result['diagnosis_id'] = diagnosis.id
+
+    if not patient_id:
+        prediction_cache.set(cache_input, result)
 
     return result
 

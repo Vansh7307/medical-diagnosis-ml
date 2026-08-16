@@ -4,6 +4,8 @@ Production-grade security for healthcare AI endpoints.
 """
 import time
 import functools
+import json
+import logging
 from collections import defaultdict
 from flask import request, jsonify, g
 from datetime import datetime
@@ -116,6 +118,13 @@ class RequestLogger:
             self.init_app(app)
 
     def init_app(self, app):
+        logger = logging.getLogger('medical_ai.request_audit')
+        if not logger.handlers:
+            handler = logging.StreamHandler()
+            handler.setFormatter(_JsonAuditFormatter())
+            logger.addHandler(handler)
+            logger.setLevel(logging.INFO)
+            logger.propagate = False
         app.before_request(self._before_request)
         app.after_request(self._after_request)
 
@@ -167,3 +176,13 @@ class RequestLogger:
         response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
 
         return response
+
+
+class _JsonAuditFormatter(logging.Formatter):
+    """Emit one machine-readable audit event per warning/error request."""
+    def format(self, record):
+        event = {'level': record.levelname, 'message': record.getMessage()}
+        for key in ('request_id', 'timestamp', 'method', 'path', 'status_code', 'duration_ms', 'remote_addr', 'content_length'):
+            if hasattr(record, key):
+                event[key] = getattr(record, key)
+        return json.dumps(event, default=str)

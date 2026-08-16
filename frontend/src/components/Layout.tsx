@@ -125,6 +125,17 @@ export default function Layout() {
         </div>
 
         <main className="flex-1 overflow-auto">
+          <div className="sticky top-0 z-20 hidden border-b border-white/10 bg-[#08090c]/85 px-4 py-2 backdrop-blur-xl md:flex md:items-center md:justify-between">
+            <div className="flex flex-wrap items-center gap-3 text-[11px] text-slate-300">
+              <span className="text-emerald-300">🟢 Server Status: Active (Render Cloud)</span>
+              <span>⚡ Inference cache: warm</span>
+              <span>🎯 Decision support · clinician review</span>
+            </div>
+            <div className="flex items-center gap-2 text-[11px]">
+              <a href="https://medical-diagnosis-ml.vercel.app" target="_blank" rel="noreferrer" className="rounded-md border border-teal-400/40 px-2 py-1 text-teal-300 hover:bg-teal-400/10">Live Demo</a>
+              <a href="https://github.com/Vansh7307/medical-diagnosis-ml" target="_blank" rel="noreferrer" className="rounded-md border border-slate-600 px-2 py-1 text-slate-300 hover:border-slate-400">GitHub</a>
+            </div>
+          </div>
           <Outlet />
         </main>
       </div>
