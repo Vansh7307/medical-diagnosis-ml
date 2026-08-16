@@ -15,34 +15,30 @@ interface NavGroup {
 
 const staffNavGroups: NavGroup[] = [
   {
-    title: 'WORKSPACE',
+    title: 'CLINICAL WORKSPACE',
     items: [
-      { path: '/', label: 'Overview', icon: '🏠' },
-      { path: '/cases', label: 'Projects', icon: '📁' },
-      { path: '/board', label: 'Board', icon: '📊' },
-      { path: '/roadmap', label: 'Roadmap', icon: '🛣️' },
-      { path: '/my-work', label: 'My Work', icon: '✓', badge: 5 },
-      { path: '/team', label: 'Team', icon: '👥' },
+      { path: '/', label: 'Diagnostics & Intake', icon: '🔬' },
+      { path: '/diagnosis/new', label: 'Laboratory & Blood Panels', icon: '🧪' },
+      { path: '/radiology', label: 'Scans & Radiology', icon: '🩻' },
+      { path: '/cardiology', label: 'Cardiology & Signals', icon: '🫀' },
     ],
   },
   {
-    title: 'SYSTEMS',
+    title: 'SPECIALIZED TEST SUITES',
     items: [
-      { path: '/templates', label: 'Templates', icon: '📋' },
-      { path: '/archive', label: 'Archive', icon: '🗂️' },
+      { path: '/genomics', label: 'Genomics & DNA', icon: '🧬' },
+      { path: '/pathology', label: 'Pathology & Microbiology', icon: '🦠' },
+      { path: '/oncology', label: 'Oncology Biomarkers', icon: '🎗️' },
+      { path: '/neurology', label: 'Neurology & Mental Health', icon: '🧠' },
     ],
   },
   {
-    title: 'INTELLIGENCE',
+    title: 'CLINICAL INTELLIGENCE',
     items: [
-      { path: '/analytics', label: 'Analytics', icon: '📈' },
-      { path: '/activity', label: 'Activity', icon: '📍' },
-    ],
-  },
-  {
-    title: 'SYSTEM',
-    items: [
-      { path: '/settings', label: 'Settings', icon: '⚙️' },
+      { path: '/reports', label: 'Diagnostic Reports', icon: '📄' },
+      { path: '/analytics', label: 'Patient Longitudinal Trends', icon: '📈' },
+      { path: '/mlops', label: 'System Telemetry & Model XAI', icon: '⚡' },
+      { path: '/settings', label: 'Settings & Compliance', icon: '⚙️' },
     ],
   },
 ]
