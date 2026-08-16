@@ -73,9 +73,15 @@ See `.env.example` for the full list. The important ones:
 |---|---|
 | `DATABASE_URL` | Postgres connection string (falls back to local SQLite if unset) |
 | `JWT_SECRET_KEY` | Signing key for auth tokens |
+| `VITE_RECAPTCHA_SITE_KEY` | Public Google reCAPTCHA v2 Checkbox site key used by the frontend |
+| `RECAPTCHA_SECRET_KEY` | Secret Google reCAPTCHA v2 Checkbox key used by the backend verification endpoint |
 | `RESEND_API_KEY` | Email delivery (password reset codes) via [Resend](https://resend.com) |
 | `BOOTSTRAP_ADMIN_SECRET` | One-time secret to promote the first user to admin — **must be set**, the endpoint refuses to run without it |
 | `CORS_ORIGINS` | Allowed frontend origin(s) |
+
+> Requires Google reCAPTCHA v2 "I'm not a robot" Checkbox keys. A v3 score key or a mismatched site/secret pair will trigger "ERROR for site owner: Invalid key type".
+
+> In local development, if the key is not configured, the app will use a safe dev-only bypass token and log a warning instead of blocking auth; production still requires a valid Google key.
 
 ## Deployment
 

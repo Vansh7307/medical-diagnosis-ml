@@ -12,6 +12,8 @@ reCAPTCHA replaced the old offline math CAPTCHA -- tests can't reach
 Google's real API, so `_solve_captcha` (see conftest.py) returns a fixed
 token that's only accepted when the app is running in TESTING mode.
 """
+import os
+
 import pytest
 from tests.conftest import _solve_captcha
 
@@ -167,6 +169,22 @@ class TestLogin:
     def test_login_missing_fields(self, client):
         res = client.post('/api/auth/login', json={'username': 'test'})
         assert res.status_code == 422  # marshmallow validation error
+
+    def test_dev_bypass_token_is_accepted_without_secret_in_debug_mode(self, app):
+        """Local development should be able to run without Google keys."""
+        from app.utils.recaptcha import verify_recaptcha
+
+        original_secret = os.environ.get('RECAPTCHA_SECRET_KEY')
+        os.environ.pop('RECAPTCHA_SECRET_KEY', None)
+        try:
+            with app.app_context():
+                app.config['DEBUG'] = True
+                ok, error = verify_recaptcha('dev-recaptcha-bypass')
+                assert ok is True
+                assert error is None
+        finally:
+            if original_secret is not None:
+                os.environ['RECAPTCHA_SECRET_KEY'] = original_secret
 
     def test_login_invalid_recaptcha_token(self, client):
         _register(client, username='recaptchafail', email='recaptchafail@test.com')

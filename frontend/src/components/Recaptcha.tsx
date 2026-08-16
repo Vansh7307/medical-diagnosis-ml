@@ -62,6 +62,13 @@ const Recaptcha = forwardRef<RecaptchaHandle, RecaptchaProps>(({ onVerify, onExp
   useEffect(() => {
     const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY
     if (!siteKey) {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.warn('VITE_RECAPTCHA_SITE_KEY is not set; enabling local development reCAPTCHA bypass.')
+        onVerify('dev-recaptcha-bypass')
+        return
+      }
+
       // eslint-disable-next-line no-console
       console.error('VITE_RECAPTCHA_SITE_KEY is not set -- reCAPTCHA cannot render.')
       return
