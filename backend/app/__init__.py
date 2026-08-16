@@ -46,12 +46,16 @@ def create_app(config_name=None):
     from app.routes.diagnosis import diagnosis_bp
     from app.routes.analytics import analytics_bp
     from app.routes.admin import admin_bp
+    from app.routes.reports import reports_bp
+    from app.routes.telemetry import telemetry_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(patients_bp, url_prefix='/api/patients')
     app.register_blueprint(diagnosis_bp, url_prefix='/api/diagnosis')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
+    app.register_blueprint(reports_bp, url_prefix='/api/reports')
+    app.register_blueprint(telemetry_bp, url_prefix='/api/telemetry')
 
     from app.routes.openapi import get_openapi_spec
 

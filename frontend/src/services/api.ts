@@ -188,6 +188,23 @@ export const diagnosisAPI = {
     })
   },
   models: () => api.get('/diagnosis/models'),
+  symptoms: (data: Record<string, unknown>) => api.post('/diagnosis/symptoms', data),
+  labs: (panelType: string, features: Record<string, number>) =>
+    api.post('/diagnosis/labs', { panel_type: panelType, features }),
+  cardiology: (features: Record<string, unknown>) => api.post('/diagnosis/cardiology', features),
+  genomics: (features: Record<string, unknown>) => api.post('/diagnosis/genomics', { features }),
+  radiology: (data: FormData) => api.post('/diagnosis/radiology', data, { headers: { 'Content-Type': 'multipart/form-data' } }),
+  pathology: (data: Record<string, unknown>) => api.post('/diagnosis/pathology', data),
+  oncology: (markerType: string, value: number) => api.post('/diagnosis/oncology', { marker_type: markerType, value }),
+  neurology: (assessmentType: string, score: number) => api.post('/diagnosis/neurology', { assessment_type: assessmentType, mmse_score: score }),
+};
+
+export const reportsAPI = {
+  generate: (patientId: string) => api.get(`/reports/generate/${encodeURIComponent(patientId)}`),
+};
+
+export const telemetryAPI = {
+  stats: () => api.get('/telemetry/stats'),
 };
 
 // Analytics

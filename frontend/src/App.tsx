@@ -3,17 +3,26 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import AdminLogin from './pages/AdminLogin'
 import Dashboard from './pages/Dashboard'
-import ComprehensiveTests from './pages/ComprehensiveTests'
-import OmniDiagnostics from './pages/OmniDiagnostics'
 import Patients from './pages/Patients'
 import NewDiagnosis from './pages/NewDiagnosis'
 import DiagnosisHistory from './pages/DiagnosisHistory'
-import Analytics from './pages/Analytics'
-import MLOpsMonitor from './pages/MLOpsMonitor'
 import AdminUsers from './pages/AdminUsers'
 import MyProfile from './pages/MyProfile'
 import ColdStartBanner from './components/ColdStartBanner'
 import ErrorBoundary from './components/ErrorBoundary'
+// Dedicated Medical View Components
+import DiagnosticsIntakeView from './pages/views/DiagnosticsIntakeView'
+import LabPanelsView from './pages/views/LabPanelsView'
+import RadiologyScansView from './pages/views/RadiologyScansView'
+import CardiologySignalsView from './pages/views/CardiologySignalsView'
+import GenomicsView from './pages/views/GenomicsView'
+import PathologyMicrobiologyView from './pages/views/PathologyMicrobiologyView'
+import OncologyBiomarkersView from './pages/views/OncologyBiomarkersView'
+import NeurologyView from './pages/views/NeurologyView'
+import DiagnosticReportsView from './pages/views/DiagnosticReportsView'
+import LongitudinalTrendsView from './pages/views/LongitudinalTrendsView'
+import SystemTelemetryView from './pages/views/SystemTelemetryView'
+import SettingsView from './pages/views/SettingsView'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = sessionStorage.getItem('token')
@@ -46,22 +55,22 @@ export default function App() {
         <Route path="/admin/login" element={<AdminLogin />} />
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
           {/* CLINICAL WORKSPACE */}
-          <Route index element={<Dashboard />} />
-          <Route path="diagnosis/new" element={<ComprehensiveTests />} />
-          <Route path="radiology" element={<ComprehensiveTests />} />
-          <Route path="cardiology" element={<ComprehensiveTests />} />
+          <Route index element={<DiagnosticsIntakeView />} />
+          <Route path="diagnosis/new" element={<LabPanelsView />} />
+          <Route path="radiology" element={<RadiologyScansView />} />
+          <Route path="cardiology" element={<CardiologySignalsView />} />
           
           {/* SPECIALIZED TEST SUITES */}
-          <Route path="genomics" element={<Dashboard />} />
-          <Route path="pathology" element={<Dashboard />} />
-          <Route path="oncology" element={<Dashboard />} />
-          <Route path="neurology" element={<Dashboard />} />
+          <Route path="genomics" element={<GenomicsView />} />
+          <Route path="pathology" element={<PathologyMicrobiologyView />} />
+          <Route path="oncology" element={<OncologyBiomarkersView />} />
+          <Route path="neurology" element={<NeurologyView />} />
           
           {/* CLINICAL INTELLIGENCE */}
-          <Route path="reports" element={<DiagnosisHistory />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="mlops" element={<MLOpsMonitor />} />
-          <Route path="settings" element={<Dashboard />} />
+          <Route path="reports" element={<DiagnosticReportsView />} />
+          <Route path="analytics" element={<LongitudinalTrendsView />} />
+          <Route path="mlops" element={<SystemTelemetryView />} />
+          <Route path="settings" element={<SettingsView />} />
           
           {/* LEGACY/SUPPORT ROUTES */}
           <Route path="patients" element={<Patients />} />

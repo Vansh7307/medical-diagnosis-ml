@@ -358,6 +358,51 @@ def _analyze_microbiology(features):
     return summary
 
 
+@diagnosis_bp.route('/symptoms', methods=['POST'])
+@role_required('doctor', 'clinician', 'admin')
+@rate_limit('diagnosis_symptoms')
+def analyze_symptoms():
+    """Return a symptom-led differential for clinical triage support."""
+    data = request.get_json(silent=True) or {}
+    symptoms = [str(item).lower() for item in data.get('symptoms', [])]
+    complaint = str(data.get('chief_complaint', '')).lower()
+    severity = max(0, min(10, int(data.get('severity', 0) or 0)))
+    duration = max(0, int(data.get('duration_days', 0) or 0))
+    if not symptoms and not complaint:
+        return jsonify({'error': 'Provide a chief_complaint or at least one symptom'}), 400
+
+    candidates = [
+        ('Acute coronary syndrome', ('chest pain', 'shortness of breath'), 0.31),
+        ('Respiratory infection', ('fever', 'cough'), 0.29),
+        ('Migraine or primary headache', ('headache', 'nausea'), 0.23),
+        ('Gastrointestinal condition', ('abdominal pain', 'nausea'), 0.20),
+    ]
+    clinical_text = ' '.join(symptoms + [complaint])
+    ranked = []
+    for name, terms, base in candidates:
+        matches = sum(term in clinical_text for term in terms)
+        score = min(0.95, base + matches * 0.18 + (0.05 if severity >= 7 else 0) + (0.03 if duration > 7 else 0))
+        ranked.append({'condition': name, 'confidence': round(score * 100, 1), 'matched_signals': matches})
+    ranked.sort(key=lambda item: item['confidence'], reverse=True)
+    return jsonify({'differential': ranked, 'triage': 'urgent review' if severity >= 8 else 'clinical review',
+                    'disclaimer': 'Decision support only; a qualified clinician must interpret this result.'}), 200
+
+
+@diagnosis_bp.route('/radiology', methods=['POST'])
+@role_required('doctor', 'clinician', 'admin')
+@rate_limit('diagnosis_radiology')
+def analyze_radiology():
+    """Produce a deterministic scan-overlay simulation for the selected modality."""
+    modality = request.form.get('modality', 'xray').lower()
+    analysis_type = request.form.get('analysis_type', 'lesion').lower()
+    uploaded = request.files.get('image') or request.files.get('dicom')
+    return jsonify({'modality': modality, 'analysis_type': analysis_type,
+                    'upload_received': bool(uploaded and uploaded.filename),
+                    'anomalies': [{'label': f'{analysis_type.title()} candidate', 'confidence': 0.74,
+                                   'bounding_box': {'x': 34, 'y': 26, 'width': 28, 'height': 22}}],
+                    'disclaimer': 'Overlay is a visualization aid and is not a radiology interpretation.'}), 200
+
+
 @diagnosis_bp.route('/heart', methods=['POST'])
 @role_required('doctor', 'clinician', 'admin')
 @rate_limit('diagnosis_heart')
@@ -577,6 +622,7 @@ def explain_prediction(diagnosis_type):
         return jsonify({'error': f'Explanation failed: {str(e)}'}), 500
 
 
+@diagnosis_bp.route('/labs', methods=['POST'])
 @diagnosis_bp.route('/analyze/laboratory', methods=['POST'])
 @jwt_required()
 @rate_limit('diagnosis_laboratory')
@@ -587,7 +633,19 @@ def analyze_laboratory():
         return jsonify({'error': 'Request body required'}), 400
     
     panel_type = data.get('panel_type', '').lower()
-    features = data.get('features', {})
+    features = data.get('features') or {key: value for key, value in data.items() if key not in {'panel_type', 'patient_id'}}
+    # The interactive intake grid captures the high-value markers.  Fill the
+    # remaining validated panel fields with explicitly normal reference values
+    # so the simulation can still give immediate slider feedback.
+    reference_values = {
+        'cbc': {'hematocrit': 42, 'neutrophils': 60, 'lymphocytes': 30},
+        'cmp': {'calcium': 9.4, 'potassium': 4.1, 'co2': 25, 'chloride': 102,
+                'bilirubin': 0.7, 'ast': 22, 'alt': 24, 'alp': 80},
+        'lipid': {'apob': 90, 'hs_crp': 1.2, 'troponin_i': 0.01, 'troponin_t': 0.01, 'nt_probnp': 80},
+        'endocrine': {'free_t3': 3.1, 'fasting_insulin': 8, 'cortisol': 12,
+                      'testosterone': 500, 'estrogen': 80, 'vitamin_d': 35},
+    }
+    features = {**reference_values.get(panel_type, {}), **features}
     
     schemas = {
         'cbc': CBC_SCHEMA,
@@ -611,39 +669,42 @@ def analyze_laboratory():
     patient_id = data.get('patient_id')
     patient = _validate_patient(patient_id) if patient_id else None
     
-    diagnosis = Diagnosis(
-        patient_id=patient.id if patient else None,
-        diagnosis_type=f'lab_{panel_type}',
-        features_json=json.dumps(validated_features),
-        prediction='Laboratory panel analysis completed',
-        confidence=0.95,
-        risk_score=summary.get('risk_score', 0),
-        status='completed',
-    )
-    db.session.add(diagnosis)
-    db.session.commit()
-    ml_logger.log_prediction_audit('laboratory', validated_features, summary)
+    diagnosis = None
+    if patient:
+        diagnosis = Diagnosis(patient_id=patient.id, diagnosis_type=f'lab_{panel_type}',
+                              input_features=json.dumps(validated_features), prediction='Laboratory panel analysis completed',
+                              confidence=0.95, risk_score=summary.get('risk_score', 0), status='completed')
+        db.session.add(diagnosis)
+        db.session.commit()
+    ml_logger.log_prediction('laboratory', validated_features, summary, 'rule-based-v1')
     
     return jsonify({
         'diagnosis_type': f'lab_{panel_type}',
         'panel_type': panel_type,
         'features': validated_features,
         'summary': summary,
-        'audit_id': diagnosis.id,
+        'audit_id': diagnosis.id if diagnosis else None,
     }), 200
 
 
+@diagnosis_bp.route('/cardiology', methods=['POST'])
 @diagnosis_bp.route('/analyze/cardiology', methods=['POST'])
 @jwt_required()
 @rate_limit('diagnosis_cardiology')
 def analyze_cardiology():
     """ECG/EKG signal analysis and arrhythmia detection."""
     data = request.get_json()
-    if not data or 'features' not in data:
+    if not data:
         return jsonify({'error': 'features object required'}), 400
+    raw_features = data.get('features', data)
+    raw_features = {**raw_features, 't_wave_amplitude': raw_features.get('t_wave_amplitude', raw_features.get('t_wave_amp')),
+                    'rhythm_regularity': raw_features.get('rhythm_regularity', raw_features.get('rhythm'))}
+    raw_features.pop('t_wave_amp', None)
+    raw_features.pop('rhythm', None)
+    raw_features.pop('patient_id', None)
     
     try:
-        validated_features = ECG_SCHEMA.load(data['features'])
+        validated_features = ECG_SCHEMA.load(raw_features)
     except MarshmallowValidationError as e:
         return jsonify({'error': 'Invalid ECG parameters', 'details': e.messages}), 422
     
@@ -652,27 +713,24 @@ def analyze_cardiology():
     patient_id = data.get('patient_id')
     patient = _validate_patient(patient_id) if patient_id else None
     
-    diagnosis = Diagnosis(
-        patient_id=patient.id if patient else None,
-        diagnosis_type='ecg_analysis',
-        features_json=json.dumps(validated_features),
-        prediction=ecg_summary.get('interpretation', 'Normal sinus rhythm'),
-        confidence=ecg_summary.get('confidence', 0.88),
-        risk_score=ecg_summary.get('arrhythmia_risk', 0),
-        status='completed',
-    )
-    db.session.add(diagnosis)
-    db.session.commit()
-    ml_logger.log_prediction_audit('cardiology', validated_features, ecg_summary)
+    diagnosis = None
+    if patient:
+        diagnosis = Diagnosis(patient_id=patient.id, diagnosis_type='ecg_analysis', input_features=json.dumps(validated_features),
+                              prediction=ecg_summary.get('interpretation', 'Normal sinus rhythm'),
+                              confidence=ecg_summary.get('confidence', 0.88), risk_score=ecg_summary.get('arrhythmia_risk', 0), status='completed')
+        db.session.add(diagnosis)
+        db.session.commit()
+    ml_logger.log_prediction('cardiology', validated_features, ecg_summary, 'rule-based-v1')
     
     return jsonify({
         'diagnosis_type': 'ecg_analysis',
         'features': validated_features,
         'summary': ecg_summary,
-        'audit_id': diagnosis.id,
+        'audit_id': diagnosis.id if diagnosis else None,
     }), 200
 
 
+@diagnosis_bp.route('/genomics', methods=['POST'])
 @diagnosis_bp.route('/analyze/genomic', methods=['POST'])
 @jwt_required()
 @rate_limit('diagnosis_genomic')
@@ -692,24 +750,20 @@ def analyze_genomic():
     patient_id = data.get('patient_id')
     patient = _validate_patient(patient_id) if patient_id else None
     
-    diagnosis = Diagnosis(
-        patient_id=patient.id if patient else None,
-        diagnosis_type='genomic_analysis',
-        features_json=json.dumps(validated_features),
-        prediction=genomic_summary.get('risk_profile', 'Standard genetic risk profile'),
-        confidence=genomic_summary.get('confidence', 0.92),
-        risk_score=genomic_summary.get('overall_prs', 50),
-        status='completed',
-    )
-    db.session.add(diagnosis)
-    db.session.commit()
-    ml_logger.log_prediction_audit('genomic', validated_features, genomic_summary)
+    diagnosis = None
+    if patient:
+        diagnosis = Diagnosis(patient_id=patient.id, diagnosis_type='genomic_analysis', input_features=json.dumps(validated_features),
+                              prediction=genomic_summary.get('risk_profile', 'Standard genetic risk profile'),
+                              confidence=genomic_summary.get('confidence', 0.92), risk_score=genomic_summary.get('overall_prs', 50), status='completed')
+        db.session.add(diagnosis)
+        db.session.commit()
+    ml_logger.log_prediction('genomic', validated_features, genomic_summary, 'rule-based-v1')
     
     return jsonify({
         'diagnosis_type': 'genomic_analysis',
         'features': validated_features,
         'summary': genomic_summary,
-        'audit_id': diagnosis.id,
+        'audit_id': diagnosis.id if diagnosis else None,
     }), 200
 
 
@@ -732,25 +786,80 @@ def analyze_microbiology():
     patient_id = data.get('patient_id')
     patient = _validate_patient(patient_id) if patient_id else None
     
-    diagnosis = Diagnosis(
-        patient_id=patient.id if patient else None,
-        diagnosis_type='microbiology_analysis',
-        features_json=json.dumps(validated_features),
-        prediction=microbio_summary.get('organism_type', 'Unknown pathogen'),
-        confidence=microbio_summary.get('confidence', 0.85),
-        risk_score=microbio_summary.get('virulence_risk', 0),
-        status='completed',
-    )
-    db.session.add(diagnosis)
-    db.session.commit()
-    ml_logger.log_prediction_audit('microbiology', validated_features, microbio_summary)
+    diagnosis = None
+    if patient:
+        diagnosis = Diagnosis(patient_id=patient.id, diagnosis_type='microbiology_analysis',
+                              input_features=json.dumps(validated_features),
+                              prediction=microbio_summary.get('organism_type', 'Unknown pathogen'),
+                              confidence=microbio_summary.get('confidence', 0.85),
+                              risk_score=microbio_summary.get('virulence_risk', 0), status='completed')
+        db.session.add(diagnosis)
+        db.session.commit()
+    ml_logger.log_prediction('microbiology', validated_features, microbio_summary, 'rule-based-v1')
     
     return jsonify({
         'diagnosis_type': 'microbiology_analysis',
         'features': validated_features,
         'summary': microbio_summary,
-        'audit_id': diagnosis.id,
+        'audit_id': diagnosis.id if diagnosis else None,
     }), 200
+
+
+@diagnosis_bp.route('/pathology', methods=['POST'])
+@role_required('doctor', 'clinician', 'admin')
+@rate_limit('diagnosis_pathology')
+def analyze_pathology():
+    """Summarize a pathology/culture workbench submission."""
+    data = request.get_json(silent=True) or {}
+    specimen = str(data.get('specimen_type', '')).strip().lower()
+    organism = str(data.get('culture_organism', '')).strip().lower()
+    gram_stain = data.get('gram_stain', '')
+    if specimen not in {'biopsy', 'culture', 'blood', 'urine', 'sputum', 'csf'}:
+        return jsonify({'error': 'A supported specimen_type is required'}), 422
+    if organism not in {'bacteria', 'virus', 'fungus', 'parasite', 'unknown'}:
+        return jsonify({'error': 'A supported culture_organism is required'}), 422
+    if gram_stain not in {'+', '-', ''}:
+        return jsonify({'error': 'gram_stain must be +, -, or blank'}), 422
+    return jsonify({'specimen_type': specimen, 'organism_type': organism, 'gram_stain': gram_stain,
+                    'sensitivity': {'penicillin': 'intermediate', 'vancomycin': 'sensitive'},
+                    'disclaimer': 'Culture simulations require laboratory confirmation.'}), 200
+
+
+@diagnosis_bp.route('/oncology', methods=['POST'])
+@role_required('doctor', 'clinician', 'admin')
+@rate_limit('diagnosis_oncology')
+def analyze_oncology_marker():
+    """Evaluate one tumor-marker trend point without making a cancer diagnosis."""
+    data = request.get_json(silent=True) or {}
+    marker = str(data.get('marker_type', '')).lower()
+    try:
+        value = float(data.get('value'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'value must be numeric'}), 422
+    thresholds = {'psa': 4, 'cea': 5, 'ca125': 35, 'ca199': 37, 'afp': 10}
+    if marker not in thresholds or value < 0:
+        return jsonify({'error': 'Provide a supported marker_type and non-negative value'}), 422
+    return jsonify({'marker_type': marker, 'value': value, 'reference_upper_limit': thresholds[marker],
+                    'classification': 'elevated' if value > thresholds[marker] else 'within reference range',
+                    'disclaimer': 'A tumor marker alone cannot diagnose or stage cancer.'}), 200
+
+
+@diagnosis_bp.route('/neurology', methods=['POST'])
+@role_required('doctor', 'clinician', 'admin')
+@rate_limit('diagnosis_neurology')
+def analyze_neurology():
+    """Assess a bounded cognitive-screening score for dashboard decision support."""
+    data = request.get_json(silent=True) or {}
+    assessment_type = str(data.get('assessment_type', '')).lower()
+    try:
+        score = float(data.get('mmse_score'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'mmse_score must be numeric'}), 422
+    if assessment_type not in {'mmse', 'moca', 'eeg'} or not 0 <= score <= 30:
+        return jsonify({'error': 'assessment_type must be mmse, moca, or eeg and score must be 0-30'}), 422
+    classification = 'screen negative' if score >= 24 else 'screen positive — clinical follow-up recommended'
+    return jsonify({'assessment_type': assessment_type, 'score': score, 'classification': classification,
+                    'disclaimer': 'Screening results are not a neurological diagnosis.'}), 200
 
 
 @diagnosis_bp.route('/my-history', methods=['GET'])
